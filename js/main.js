@@ -575,6 +575,7 @@
       count: 100,
       testCasePage: 0,
       testCaseCount: 50,
+      indent: '    '
     },
     methods: {
 
@@ -635,6 +636,11 @@
 
         var base = difflib.stringAsLines(JSON.stringify(oldJSON, '', 4))
         var newtxt = difflib.stringAsLines(JSON.stringify(newJSON, '', 4))
+        //无效，HTML 还是 4 个空格，而且可能导致错误
+        // var indent = this.indent || '    '
+        // var base = difflib.stringAsLines(JSON.stringify(oldJSON, null, indent))
+        // var newtxt = difflib.stringAsLines(JSON.stringify(newJSON, null, indent))
+
         var sm = new difflib.SequenceMatcher(base, newtxt)
         var opcodes = sm.get_opcodes()
         $('#diffoutput').empty().append(diffview.buildView({
@@ -945,7 +951,7 @@
                 alert('自动生成代码，可填语言:\nJava,Kotlin,Swift,Objective-C,\nTypeScript,JavaScript,C#,PHP,Python,Go')
               }
               else if (index == 7) {
-                alert('多个类型用 , 隔开，可填类型:\nPARAM(GET parameter),\nJSON(POST application/json),\nFORM(POST x-www-form-urlencoded),\nDATA(POST form-data)')
+                alert('多个类型用 , 隔开，可填类型:\nPARAM(GET ?key0=value0&key1=value1),\nJSON(POST application/json),\nFORM(POST x-www-form-urlencoded),\nDATA(POST form-data)\nGQL(POST JSON to GraphQL API)')
               }
               break
             case 3:
@@ -2125,8 +2131,10 @@
 
           App.showUrl(isAdminOperation, '/login')
 
-          vInput.value = JSON.stringify(req, null, '  ')
-          App.type = REQUEST_TYPE_JSON
+          vInput.value = JSON.stringify(req, null, App.indent)
+          if (App.type != REQUEST_TYPE_GQL) {
+            App.type = REQUEST_TYPE_JSON
+          }
           App.showTestCase(false, App.isLocalShow)
           App.onChange(false)
           App.send(isAdminOperation, function (url, res, err) {
@@ -2256,8 +2264,10 @@
         }
         else {
           App.showUrl(isAdminOperation, '/logout')
-          vInput.value = JSON.stringify(req, null, '  ')
-          this.type = REQUEST_TYPE_JSON
+          vInput.value = JSON.stringify(req, null, App.indent)
+          if (App.type != REQUEST_TYPE_GQL) {
+            App.type = REQUEST_TYPE_JSON
+          }
           this.showTestCase(false, App.isLocalShow)
           this.onChange(false)
           this.send(isAdminOperation, callback)
@@ -2327,7 +2337,7 @@
           var after;
           try {
             afterObj = jsonlint.parse(before);
-            after = JSON.stringify(afterObj, null, '  ');
+            after = JSON.stringify(afterObj, null, App.indent);
             before = after;
           }
           catch (e) {
@@ -2336,7 +2346,7 @@
 
             try {
               afterObj = jsonlint.parse(App.removeComment(before));
-              after = JSON.stringify(afterObj, null, '  ');
+              after = JSON.stringify(afterObj, null, App.indent);
             } catch (e2) {
               throw new Error('请求 JSON 格式错误！请检查并编辑请求！\n\n如果JSON中有注释，请 手动删除 或 点击左边的 \'/" 按钮 来去掉。\n\n' + e2.message)
             }
@@ -2456,6 +2466,7 @@
           index++;
           this.type = this.types[index % count]
         }
+        this.indent = this.type == REQUEST_TYPE_GQL ? '  ' : '    '
 
         var url = StringUtil.get(vUrl.value)
         var index = url.indexOf('?')
@@ -2486,7 +2497,7 @@
 
           vUrl.value = url.substring(0, index)
           if ($.isEmptyObject(paramObj) == false) {
-            vInput.value = '//TODO 从 URL 上的参数转换过来：\n' +  JSON.stringify(paramObj, null, '  ') + '\n//FIXME 需要与下面原来的字段合并为一个 JSON：\n' + StringUtil.get(vInput.value)
+            vInput.value = '//TODO 从 URL 上的参数转换过来：\n' +  JSON.stringify(paramObj, null, App.indent) + '\n//FIXME 需要与下面原来的字段合并为一个 JSON：\n' + StringUtil.get(vInput.value)
           }
           clearTimeout(handler)  //解决 vUrl.value 和 vInput.value 变化导致刷新，而且会把 vInput.value 重置，加上下面 onChange 再刷新就卡死了
         }
@@ -2511,7 +2522,7 @@
 
       showAndSend: function (branchUrl, req, isAdminOperation, callback) {
         App.showUrl(isAdminOperation, branchUrl)
-        vInput.value = JSON.stringify(req, null, '  ')
+        vInput.value = JSON.stringify(req, null, App.indent)
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, callback)
@@ -3390,7 +3401,7 @@
         var count = (random || {}).count || 1
         for (var i = 0; i < count; i ++) {
           if (show == true) {
-            vInput.value = JSON.stringify(json, null, '  ');
+            vInput.value = JSON.stringify(json, null, App.indent);
             this.send(false, callback);
           }
           else {
@@ -4107,10 +4118,11 @@
 
       setTimeout(function () {
         if (App.type == REQUEST_TYPE_GQL) {
+          App.indent = '  '
           vInput.value = JSON.stringify({
             first: 10,
             skip: 0
-          }, null, '  ')
+          }, null, App.indent)
           App.onChange(false)
         }
       }, 500)
