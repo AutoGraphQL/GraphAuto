@@ -4119,6 +4119,7 @@
       setTimeout(function () {
         if (App.type == REQUEST_TYPE_GQL) {
           App.indent = '  '
+          App.urlComment = '带参数关联查询'
           vInput.value = JSON.stringify({
             first: 10,
             skip: 0
