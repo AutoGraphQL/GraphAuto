@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>APIAuto机器学习测试、自动生成代码、自动静态检查、自动生成文档与注释等，做最先进的接口管理平台。</title>
+  <title>GraphAuto-GraphQL API management tool with machine learning.</title>
   <meta charset="utf-8" />
   <meta name="keywords" content="apijson,api,json,auto,apiauto,自动生成接口文档,自动化接口回归测试,机器学习接口回归测试,回归测试,机器学习,接口测试,自动化,fastjson,json在线解析,json格式化验证"/>
-  <meta name="description" content="APIAuto机器学习测试、自动生成代码、自动静态检查、自动生成文档与注释等，做最先进的接口管理平台。"/>
+  <meta name="description" content="GraphAuto机器学习测试、自动生成代码、自动静态检查、自动生成文档与注释等，做最先进的接口管理平台。"/>
 
   <!-- 登录 <<<<<<<<<<<<<<<<<<<< -->
   <link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css">
@@ -55,25 +55,24 @@
 <div id="app" style="background-color: white">
   <div class="side-top">
 
-    <img src="img/logo.png" class="logo-img"/>
-    <a class="logo" href="http://apijson.org:8000" target="_blank">
-      <span class="on">APIJSON</span><span >.org</span>
+    <img src="svg/logo.svg" class="logo-img" style="margin-left: 12px"/>
+    <a class="logo" href="https://github.com/AutoGraphQL/GraphAuto" target="_blank">
+      <span class="on" style="color: #E10098">GraphAuto</span>
     </a>
     <a v-show="isDelayShow" >2s</a>
 
 
-    <iframe v-show="User.id == null || User.id <= 0" src="https://ghbtns.com/github-btn.html?user=APIJSON&amp;repo=APIJSON&amp;type=star&amp;count=true&amp;size=small" frameborder="0" scrolling="0" width="160px" height="18px"></iframe>
+    <iframe v-show="User.id == null || User.id <= 0" src="https://ghbtns.com/github-btn.html?user=AutoGraphQL&amp;repo=GraphAuto&amp;type=star&amp;count=true&amp;size=small" frameborder="0" scrolling="0" width="160px" height="18px"></iframe>
 
     <!--只用60%避免拦截左右两侧View的触摸事件-->
     <div style="width: 40%;height: 100%;left: 30%;display: inline-block;text-align: center;position: fixed;padding-top: 10px">
-      <a style="font-size: large;margin-left: 10px;margin-right: 10px;color: silver" href="https://github.com/APIJSON/APIJSON/blob/master/Document.md" target="_blank" >文档</a>
-      <a style="font-size: large;margin-left: 10px;margin-right: 10px;color: silver" href="http://i.youku.com/apijson" target="_blank" >视频</a>
-      <a style="font-size: large;margin-left: 10px;margin-right: 10px;color: silver" href="https://github.com/search?o=desc&q=apijson&s=stars&type=Repositories" target="_blank" >生态</a>
+      <a style="font-size: large;margin-left: 10px;margin-right: 10px;color: silver" href="https://github.com/AutoGraphQL/AutoGraphQL#documents" target="_blank" >Documents</a>
+      <a style="font-size: large;margin-left: 10px;margin-right: 10px;color: silver" href="https://github.com/AutoGraphQL" target="_blank" >Organization</a>
     </div>
 
     <div class="top-right">
 
-      <a v-show="User.id == null || User.id <= 0" href="https://gitee.com/APIJSON/APIJSON" target="_blank">
+      <a v-show="User.id == null || User.id <= 0" href="https://gitee.com/AutoGraphQL/AutoGraphQL" target="_blank">
         <img class="ui inline black image" height="24" src="https://gitee.com/logo-black.svg?20171024" width="60">
       </a>
 
@@ -177,19 +176,33 @@
         <div style="width: 100%;height: 100%;position: absolute;display: flex;flex-grow: 1" >
           <textarea id="vComment" style="width: 100%; height: 100%; position: absolute; z-index: 0; color: darkseagreen; background-color: white;" wrap="off" disabled>
           </textarea>
-          <textarea id="vInput" @keyup="onChange(true)" style="width: 100%;height: 100%; position: absolute; z-index: 100; background: #0000;" wrap="off" >
+          <textarea id="vInput" @keyup="onChange(true)" style="width: 100%;height: 100%; position: absolute;
+           z-index: 100; background: #0000;" wrap="off" placeholder="Input common JSON or GraphQL variables">
 {
-    "User": {
-        "id": 82001
-    },
-    "[]": {
-        "Comment": {
-            "userId@": "User/id"
-        }
+  "User": {
+    "id": 82001
+  },
+  "[]": {
+    "Comment": {
+      "userId@": "User/id"
     }
+  }
 }
           </textarea>
         </div>
+
+          <textarea v-show="type == 'GQL'" id="vGraphQLInput" style="position: absolute; right: 0px;
+          display: inline-flex; flex-grow: 2; width: 65%; min-width: 375px; height: 100%;
+          border-left: #DDD 1px solid; z-index: 100;" wrap="off" placeholder="Input GraphQL query or mutation">
+query ($first: Int, $skip: Int) {
+  allPersons(first: $first, skip: $skip) {
+    name
+    films {
+      director
+    }
+  }
+}
+          </textarea>
 
           <div style="width: 100%; height: auto; position: absolute;bottom: 0px; z-index: 100; background: white;" >
 
@@ -659,6 +672,7 @@ User/id : RANDOM_INT(82001,82020)  //随机整数
 
   var vInput = document.getElementById("vInput");
   var vComment = document.getElementById("vComment");
+  var vGraphQLInput = document.getElementById("vGraphQLInput");
   var vHeader = document.getElementById("vHeader");
   var vRandom = document.getElementById("vRandom");
   var vOutput = document.getElementById("vOutput");
@@ -668,7 +682,7 @@ User/id : RANDOM_INT(82001,82020)  //随机整数
   var vVerify = document.getElementById("vVerify");
   var vRemember = document.getElementById("vRemember");
 
-  vUrl.value = new String(URL_BASE + '/get'); //main.js里访问不到，可能是script引用顺序问题
+  vUrl.value = new String(URL_BASE + '/swapi'); //main.js里访问不到，可能是script引用顺序问题
 
   var vMarkdown = document.getElementById('vMarkdown');
   var vPage = document.getElementById('vPage');

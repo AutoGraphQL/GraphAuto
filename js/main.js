@@ -348,6 +348,7 @@
   var REQUEST_TYPE_FORM = 'FORM'  // POST x-www-form-urlencoded
   var REQUEST_TYPE_DATA = 'DATA'  // POST form-data
   var REQUEST_TYPE_JSON = 'JSON'  // POST application/json
+  var REQUEST_TYPE_GQL = 'GQL'  // POST application/json
 
   var RANDOM_REAL = 'RANDOM_REAL'
   var RANDOM_REAL_IN = 'RANDOM_REAL_IN'
@@ -560,8 +561,8 @@
         id: 0,
         balance: null //点击更新提示需要判空 0.00
       },
-      type: REQUEST_TYPE_JSON,
-      types: [ REQUEST_TYPE_JSON, REQUEST_TYPE_PARAM ],  //默认展示
+      type: REQUEST_TYPE_GQL,
+      types: [ REQUEST_TYPE_GQL, REQUEST_TYPE_JSON ],  //默认展示
       host: '',
       database: 'MYSQL',// 'POSTGRESQL',
       schema: 'sys',
@@ -786,6 +787,14 @@
           return jsonlint.parse(App.removeComment(s));
         }
       },
+      getGraphQLQuery: function (query, defaultValue) {
+        if (StringUtil.isEmpty(query, true)) {
+          return defaultValue
+        }
+        //TODO 校验 GraphQL Query/Mutation
+        return query
+      },
+
       getHeader: function (text) {
         var header = {}
         var hs = StringUtil.isEmpty(text, true) ? null : StringUtil.split(text, '\n')
@@ -2116,7 +2125,7 @@
 
           App.showUrl(isAdminOperation, '/login')
 
-          vInput.value = JSON.stringify(req, null, '    ')
+          vInput.value = JSON.stringify(req, null, '  ')
           App.type = REQUEST_TYPE_JSON
           App.showTestCase(false, App.isLocalShow)
           App.onChange(false)
@@ -2170,7 +2179,7 @@
             },
             verify: vVerify.value
           },
-          null, '    ')
+          null, '  ')
         App.showTestCase(false, false)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2201,7 +2210,7 @@
               _password: vPassword.value
             }
           },
-          null, '    ')
+          null, '  ')
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2247,7 +2256,7 @@
         }
         else {
           App.showUrl(isAdminOperation, '/logout')
-          vInput.value = JSON.stringify(req, null, '    ')
+          vInput.value = JSON.stringify(req, null, '  ')
           this.type = REQUEST_TYPE_JSON
           this.showTestCase(false, App.isLocalShow)
           this.onChange(false)
@@ -2265,7 +2274,7 @@
             type: type,
             phone: vAccount.value
           },
-          null, '    ')
+          null, '  ')
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2318,7 +2327,7 @@
           var after;
           try {
             afterObj = jsonlint.parse(before);
-            after = JSON.stringify(afterObj, null, "    ");
+            after = JSON.stringify(afterObj, null, '  ');
             before = after;
           }
           catch (e) {
@@ -2327,7 +2336,7 @@
 
             try {
               afterObj = jsonlint.parse(App.removeComment(before));
-              after = JSON.stringify(afterObj, null, "    ");
+              after = JSON.stringify(afterObj, null, '  ');
             } catch (e2) {
               throw new Error('请求 JSON 格式错误！请检查并编辑请求！\n\n如果JSON中有注释，请 手动删除 或 点击左边的 \'/" 按钮 来去掉。\n\n' + e2.message)
             }
@@ -2477,7 +2486,7 @@
 
           vUrl.value = url.substring(0, index)
           if ($.isEmptyObject(paramObj) == false) {
-            vInput.value = '//TODO 从 URL 上的参数转换过来：\n' +  JSON.stringify(paramObj, null, '    ') + '\n//FIXME 需要与下面原来的字段合并为一个 JSON：\n' + StringUtil.get(vInput.value)
+            vInput.value = '//TODO 从 URL 上的参数转换过来：\n' +  JSON.stringify(paramObj, null, '  ') + '\n//FIXME 需要与下面原来的字段合并为一个 JSON：\n' + StringUtil.get(vInput.value)
           }
           clearTimeout(handler)  //解决 vUrl.value 和 vInput.value 变化导致刷新，而且会把 vInput.value 重置，加上下面 onChange 再刷新就卡死了
         }
@@ -2502,7 +2511,7 @@
 
       showAndSend: function (branchUrl, req, isAdminOperation, callback) {
         App.showUrl(isAdminOperation, branchUrl)
-        vInput.value = JSON.stringify(req, null, '    ')
+        vInput.value = JSON.stringify(req, null, '  ')
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, callback)
@@ -2539,7 +2548,16 @@
           return
         }
 
+        var type = this.type
         var req = this.getRequest(vInput.value)
+        if (type == REQUEST_TYPE_GQL) {
+          req = {
+            //FIXME 是否必要？
+            "operationName": "IntrospectionQuery",
+            "variables": req,
+            "query": App.getGraphQLQuery(vGraphQLInput.value)
+          }
+        }
 
         var url = this.getUrl()
 
@@ -2548,7 +2566,7 @@
 
 
         this.setBaseUrl()
-        this.request(isAdminOperation, this.type, url, req, isAdminOperation ? {} : header, callback)
+        this.request(isAdminOperation, type, url, req, isAdminOperation ? {} : header, callback)
 
         this.locals = this.locals || []
         if (this.locals.length >= 1000) { //最多1000条，太多会很卡
@@ -2559,13 +2577,13 @@
           'Document': {
             'userId': App.User.id,
             'name': App.formatDateTime() + (StringUtil.isEmpty(req.tag, true) ? '' : ' ' + req.tag),
-            'type': App.type,
+            'type': type,
             'url': '/' + method,
-            'request': JSON.stringify(req, null, '    '),
+            'request': JSON.stringify(req, null, '  '),
             'header': vHeader.value
           }
         })
-        App.saveCache('', 'locals', this.locals)
+        this.saveCache('', 'locals', this.locals)
       },
 
       //请求
@@ -2577,7 +2595,7 @@
           method: (type == REQUEST_TYPE_PARAM ? 'get' : 'post'),
           url: (isAdminOperation == false && this.isDelegateEnabled ? (this.server + '/delegate?$_delegate_url=') : '' ) + StringUtil.noBlank(url),
           params: (type == REQUEST_TYPE_PARAM || type == REQUEST_TYPE_FORM ? req : null),
-          data: (type == REQUEST_TYPE_JSON ? req : (type == REQUEST_TYPE_DATA ? toFormData(req) : null)),
+          data: (type == REQUEST_TYPE_GQL || type == REQUEST_TYPE_JSON ? req : (type == REQUEST_TYPE_DATA ? toFormData(req) : null)),
           headers: header,  //Accept-Encoding（HTTP Header 大小写不敏感，SpringBoot 接收后自动转小写）可能导致 Response 乱码
           withCredentials: true //Cookie 必须要  type == REQUEST_TYPE_JSON
         })
@@ -2587,7 +2605,7 @@
             // if ((res.config || {}).method == 'options') {
             //   return
             // }
-            log('send >> success:\n' + JSON.stringify(res, null, '    '))
+            log('send >> success:\n' + JSON.stringify(res, null, '  '))
 
             //未登录，清空缓存
             if (res.data != null && res.data.code == 407) {
@@ -2638,7 +2656,7 @@
           if (isSingle && data.code == 200) { //不格式化错误的结果
             data = JSONResponse.formatObject(data);
           }
-          App.jsoncon = JSON.stringify(data, null, '    ');
+          App.jsoncon = JSON.stringify(data, null, '  ');
           App.view = 'code';
           vOutput.value = '';
         }
@@ -2787,7 +2805,7 @@
         s += '\n#### <= Web-JavaScript/TypeScript/Python: 和左边的请求 JSON 一样 \n';
 
         s += '\n\n#### 开放源码 '
-          + '\nAPIJSON 接口工具: https://github.com/TommyLemon/APIAuto '
+          + '\nAPIJSON 接口工具: https://github.com/AutoGraphQL/GraphAuto '
           + '\nAPIJSON 官方文档: https://github.com/vincentCheng/apijson-doc '
           + '\nAPIJSON 英文文档: https://github.com/ruoranw/APIJSONdocs '
           + '\nAPIJSON 官方网站: https://github.com/APIJSON/apijson.org '
@@ -2816,7 +2834,7 @@
           + '<h3 align="center">简介</h3>'
           + '<p align="center">本站为 APIAuto-自动化接口管理平台'
           + '<br>提供 接口和文档托管、机器学习自动化测试、自动生成文档和代码 等服务'
-          + '<br>由 <a href="https://github.com/TommyLemon/APIAuto" target="_blank">APIAuto(前端网页工具)</a>, <a href="https://github.com/APIJSON/APIJSON" target="_blank">APIJSON(后端接口服务)</a> 等提供技术支持'
+          + '<br>由 <a href="https://github.com/AutoGraphQL/GraphAuto" target="_blank">APIAuto(前端网页工具)</a>, <a href="https://github.com/APIJSON/APIJSON" target="_blank">APIJSON(后端接口服务)</a> 等提供技术支持'
           + '<br>遵循 <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache-2.0 开源协议</a>'
           + '<br>Copyright &copy; 2016-2019 Tommy Lemon</p>'
         );
@@ -3372,7 +3390,7 @@
         var count = (random || {}).count || 1
         for (var i = 0; i < count; i ++) {
           if (show == true) {
-            vInput.value = JSON.stringify(json, null, '    ');
+            vInput.value = JSON.stringify(json, null, '  ');
             this.send(false, callback);
           }
           else {
@@ -3404,7 +3422,7 @@
           return;
         }
 
-        // alert('> json = ' + JSON.stringify(json, null, '    '))
+        // alert('> json = ' + JSON.stringify(json, null, '  '))
 
         this.testRandomSingle(show, null, this.type, this.getUrl(), json, this.getHeader(vHeader.value), callback)
       },
@@ -3420,7 +3438,7 @@
 
           var json = json || {};
 
-          // alert('< json = ' + JSON.stringify(json, null, '    '))
+          // alert('< json = ' + JSON.stringify(json, null, '  '))
 
           var line;
 
@@ -3539,14 +3557,14 @@
             if (current == null) {
               current = json;
             }
-            // alert('< current = ' + JSON.stringify(current, null, '    '))
+            // alert('< current = ' + JSON.stringify(current, null, '  '))
 
             if (key != lastKeyInPath || current.hasOwnProperty(key) == false) {
               delete current[lastKeyInPath];
             }
             current[key] = eval(value);
 
-            // alert('> current = ' + JSON.stringify(current, null, '    '))
+            // alert('> current = ' + JSON.stringify(current, null, '  '))
           }
 
           return json
@@ -3760,7 +3778,7 @@
         t[isRandom ? r.id : 0] = response
 
         this.tests[String(accountIndex)] = tests
-        this.log('tests = ' + JSON.stringify(tests, null, '    '))
+        this.log('tests = ' + JSON.stringify(tests, null, '  '))
         // this.showTestCase(true)
 
         if (doneCount >= allCount && App.isCrossEnabled && isRandom != true) {
@@ -3802,7 +3820,7 @@
         saveTextAs(
           '# APIJSON自动化回归测试-前\n主页: https://github.com/APIJSON/APIJSON'
           + '\n\n接口名称: \n' + (document.version > 0 ? 'V' + document.version : 'V*') + ' ' + document.name
-          + '\n返回结果: \n' + JSON.stringify(JSON.parse(testRecord.response || '{}'), null, '    ')
+          + '\n返回结果: \n' + JSON.stringify(JSON.parse(testRecord.response || '{}'), null, '  ')
           , '测试：' + document.name + '-前.txt'
         )
 
@@ -3817,7 +3835,7 @@
           saveTextAs(
             '# APIJSON自动化回归测试-后\n主页: https://github.com/APIJSON/APIJSON'
             + '\n\n接口名称: \n' + (document.version > 0 ? 'V' + document.version : 'V*') + ' ' + document.name
-            + '\n返回结果: \n' + JSON.stringify(tests[document.id][isRandom ? random.id : 0] || {}, null, '    ')
+            + '\n返回结果: \n' + JSON.stringify(tests[document.id][isRandom ? random.id : 0] || {}, null, '  ')
             , '测试：' + document.name + '-后.txt'
           )
 
@@ -3827,8 +3845,8 @@
               saveTextAs(
                 '# APIJSON自动化回归测试-标准\n主页: https://github.com/APIJSON/APIJSON'
                 + '\n\n接口名称: \n' + (document.version > 0 ? 'V' + document.version : 'V*') + ' ' + document.name
-                + '\n测试结果: \n' + JSON.stringify(testRecord.compare || '{}', null, '    ')
-                + '\n测试标准: \n' + JSON.stringify(JSON.parse(testRecord.standard || '{}'), null, '    ')
+                + '\n测试结果: \n' + JSON.stringify(testRecord.compare || '{}', null, '  ')
+                + '\n测试标准: \n' + JSON.stringify(JSON.parse(testRecord.standard || '{}'), null, '  ')
                 , '测试：' + document.name + '-标准.txt'
               )
             }, 5000)
@@ -3917,7 +3935,7 @@
                 },
                 tag: 'TestRecord'
               }
- 
+
 
             App.request(true, REQUEST_TYPE_JSON, url, req, {}, function (url, res, err) {
               App.onResponse(url, res, err)
@@ -4087,6 +4105,15 @@
           '\n} catch (e) {\n' + e.message)
       }
 
+      setTimeout(function () {
+        if (App.type == REQUEST_TYPE_GQL) {
+          vInput.value = JSON.stringify({
+            first: 10,
+            skip: 0
+          }, null, '  ')
+          App.onChange(false)
+        }
+      }, 500)
 
       //无效，只能在index里设置 vUrl.value = this.getCache('', 'URL_BASE')
       this.listHistory()
