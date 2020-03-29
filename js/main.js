@@ -562,7 +562,7 @@
         balance: null //点击更新提示需要判空 0.00
       },
       type: REQUEST_TYPE_GQL,
-      types: [ REQUEST_TYPE_GQL, REQUEST_TYPE_JSON ],  //默认展示
+      types: [ REQUEST_TYPE_GQL ],  //默认展示
       host: '',
       database: 'MYSQL',// 'POSTGRESQL',
       schema: 'sys',
@@ -4123,6 +4123,7 @@
             first: 10,
             skip: 0
           }, null, App.indent)
+          vRandom.value = "first : RANDOM_IN(3,5,10,20,'1','s',false,[],{})  //随机取值\nskip : Math.round(5*Math.random())  //通过代码来自定义\n\n//清空文本内容可查看规则"
           App.onChange(false)
         }
       }, 500)
