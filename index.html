@@ -16,6 +16,16 @@
   <link href="css/loading.css" rel="stylesheet">
   <link href="css/main.css" rel="stylesheet">
   <link rel="stylesheet" href="md/css/editormd.preview.css" />
+    <style >
+        input[type=number] {
+            -moz-appearance:textfield;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -144,11 +154,13 @@
       </a>
     </div>
       <div v-show="isTestCaseShow" style="bottom: 10px; right: 13px;position: absolute; background-color: white; z-index: 100">
+          <a >搜索</a>
+          <input id="vTestCaseSearch" :value="testCaseSearch" style="width: 90px;text-align: center" @keyup="doOnKeyUp(event, true, true)" />
           <button @click="pageDown(true)">上一页</button>
-          <input id="vTestCasePage" :value="testCasePage" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true, true)" />
+          <input id="vTestCasePage" :value="testCasePage" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true, true)" type="number" />
           <button @click="pageUp(true)">下一页</button>
           <a >每页</a>
-          <input id="vTestCaseCount" :value="testCaseCount" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true, true)" />
+          <input id="vTestCaseCount" :value="testCaseCount" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true, true)" type="number" />
           <a >条</a>
       </div>
     <div class="left-panel">
@@ -401,11 +413,13 @@ User/id : RANDOM_INT(82001,82020)  //随机整数
 
         <div class="right-main" id="vMarkdown" v-show="view == 'markdown'"></div>
         <div style="bottom: 0px; right: 10px;position: absolute; background-color: white;">
+            <a >搜索</a>
+            <input id="vSearch" :value="search" style="width: 90px;text-align: center" @keyup="doOnKeyUp(event, true)" />
             <button @click="pageDown()">上一页</button>
-            <input id="vPage" :value="page" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true)" />
+            <input id="vPage" :value="page" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true)" type="number" />
             <button @click="pageUp()">下一页</button>
             <a >每页</a>
-            <input id="vCount" :value="count" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true)" />
+            <input id="vCount" :value="count" style="width: 30px;text-align: center" @keyup="doOnKeyUp(event, true)" type="number" />
             <a >条</a>
         </div>
       </div>
@@ -566,7 +580,7 @@ User/id : RANDOM_INT(82001,82020)  //随机整数
 <script type="text/x-template" id="item-template">
   <ul class="json-item">
     <vue-val :field="key" :theme="theme" :val="val" :isend="index == objLength(jsondata) - 1"
-             v-show="onRenderJSONItem(val, key, jsondata._$_this_$_ == null ? null : (JSON.parse(jsondata._$_this_$_) || {}).path)"
+             v-show="onRenderJSONItem(val, key, jsondata._$_this_$_)"
              v-for="(val, key, index) in jsondata"></vue-val>
   </ul>
 </script>
@@ -710,6 +724,9 @@ User/id : RANDOM_INT(82001,82020)  //随机整数
 
 
   function markdownToHTML(md) {
+    $(vMarkdown.innerHTML).removeAttr()
+    $(vMarkdown.innerHTML).removeData()
+    $(vMarkdown.innerHTML).empty()
     vMarkdown.innerHTML = '';
     editormd.markdownToHTML("vMarkdown", {
       markdown        : md ,//+ "\r\n" + $("#append-test").text(),

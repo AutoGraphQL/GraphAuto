@@ -17,6 +17,7 @@
  * @author Lemon
  */
 
+var DEBUG = true
 
 //状态信息，非GET请求获得的信息<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -152,7 +153,8 @@ var JSONResponse = {
    */
   getVariableName(fullName, listSuffix) {
     if (JSONObject.isArrayKey(fullName)) {
-      fullName = StringUtil.addSuffix(fullName.substring(0, fullName.length - 2), listSuffix || "list");
+      var listLength = fullName.endsWith('[]') ? 2 : 4
+      fullName = StringUtil.addSuffix(fullName.substring(0, fullName.length - listLength), listSuffix || "list");
     }
     return JSONResponse.formatKey(fullName, true, true, true, true);
   },
@@ -163,7 +165,8 @@ var JSONResponse = {
    */
   formatArrayKey(key) {
     if (JSONObject.isArrayKey(key)) {
-      key = StringUtil.addSuffix(key.substring(0, key.length - 2), "list");
+      var listLength = key.endsWith('[]') ? 2 : 4
+      key = StringUtil.addSuffix(key.substring(0, key.length - listLength), "list");
     }
     var index = key == null ? -1 : key.indexOf(":");
     if (index >= 0) {
@@ -202,7 +205,7 @@ var JSONResponse = {
    * @param firstCase 第一个单词首字母小写，后面的首字母大写， Ab => ab ; A-b-Cd => aBCd
    * @return name => name; name:alias => alias
    */
-  formatKey(fullName, formatColon, formatAt, formatHyphen, firstCase) {
+  formatKey(fullName, formatColon, formatAt, formatHyphen, firstCase, formatUnderline) {
     if (fullName == null) {
       log(TAG, "formatKey  fullName == null >> return null;");
       return null;
@@ -217,8 +220,11 @@ var JSONResponse = {
     if (formatHyphen) {
       fullName = JSONResponse.formatHyphen(fullName, firstCase);
     }
+    if (formatUnderline) {
+      fullName = JSONResponse.formatUnderline(fullName, true);
+    }
 
-    return firstCase ? StringUtil.firstCase(fullName) : fullName; //不格式化普通 key:value (value 不为 [], {}) 的 key
+    return firstCase ? StringUtil.firstCase(fullName, firstCase) : fullName; //不格式化普通 key:value (value 不为 [], {}) 的 key
   },
 
   /**"@key" => "key"
@@ -262,6 +268,30 @@ var JSONResponse = {
     return name;
   },
 
+  /**A_b_cd_Efg => ABCdEfg
+   * @param key
+   * @return
+   */
+  formatUnderline(key, firstCase) {
+    var first = true;
+    var index;
+
+    var name = "";
+    var part;
+    do {
+      index = key.indexOf("_");
+      part = index < 0 ? key : key.substring(0, index);
+
+      name += firstCase && first == false ? StringUtil.firstCase(part, true) : part;
+      key = key.substring(index + 1);
+
+      first = false;
+    }
+    while (index >= 0);
+
+    return name;
+  },
+
 
   COMPARE_ERROR: -2,
   COMPARE_NO_STANDARD: -1,
@@ -281,27 +311,39 @@ var JSONResponse = {
    3-对象缺少字段/整数变小数，黄色；
    4-code/值类型 改变，红色；
    */
-  compareResponse: function(target, real, folder, isMachineLearning) {
-    if (target == null || target.code == null) {
+  compareResponse: function(target, real, folder, isMachineLearning, codeName, isGraphQL) {
+    codeName = isGraphQL ? "code" : (StringUtil.isEmpty(codeName, true) ? 'code' : codeName)
+
+    var tErrors = isGraphQL && target != null ? target.errors : null;
+    var rErrors = isGraphQL && real != null ? real.errors : null;
+
+    var tCode = isGraphQL ? (((tErrors || [])[0] || {}).extensions || {})[codeName] : (target || {})[codeName];
+    var rCode = isGraphQL ? (((rErrors || [])[0] || {}).extensions || {})[codeName] : (real || {})[codeName];
+
+    //GraphQL 成功 Response 没有 errors 以及状态码
+    if ((tCode == null && isGraphQL != true) || (isGraphQL == true && tErrors == null && (target || {}).values == null)) {
       return {
         code: JSONResponse.COMPARE_NO_STANDARD, //未上传对比标准
         msg: '没有校验标准！',
         path: folder == null ? '' : folder
       };
     }
-    if (real == null || target.code != real.code) {
+    if (rCode != tCode) {
       return {
         code: JSONResponse.COMPARE_CODE_CHANGE,
-        msg: '状态码 code 改变！',
+        msg: '状态码 ' + codeName + ' 改变！',
         path: folder == null ? '' : folder
       };
     }
 
-    var tCode = target.code;
-    var rCode = real.code;
-
-    delete target.code;
-    delete real.code;
+    if (isGraphQL) {
+      delete target.errors;
+      delete real.errors;
+    }
+    else {
+      delete target[codeName];
+      delete real[codeName];
+    }
 
     //可能提示语变化，也要提示
     // delete target.msg;
@@ -311,8 +353,14 @@ var JSONResponse = {
       ? JSONResponse.compareWithStandard(target, real, folder)
       : JSONResponse.compareWithBefore(target, real, folder);
 
-    target.code = tCode;
-    real.code = rCode;
+    if (isGraphQL) {
+      target.errors = tErrors;
+      real.errors = rErrors;
+    }
+    else {
+      target[codeName] = tCode;
+      real[codeName] = rCode;
+    }
 
     return result;
   },
@@ -409,7 +457,7 @@ var JSONResponse = {
 
       if (max.code < JSONResponse.COMPARE_KEY_MORE) { //多出key
         for (var k in real) {
-          if (k != null && tks.indexOf(k) < 0) {
+          if (k != null && real[k] != null && target[k] == null) { //解决 null 值总是提示是新增的，且无法纠错 tks.indexOf(k) < 0) {
             max.code = JSONResponse.COMPARE_KEY_MORE;
             max.msg = '是新增的';
             max.path = JSONResponse.getAbstractPath(folder,  k);
@@ -492,9 +540,9 @@ var JSONResponse = {
 
     if (target == null) {
       return {
-        code: JSONResponse.COMPARE_NO_STANDARD,
-        msg: '没有校验标准！',
-        path: folder,
+        code: real == null ? JSONResponse.COMPARE_EQUAL : JSONResponse.COMPARE_KEY_MORE,
+        msg: real == null ? '结果正确' : '是新增的',
+        path: real == null ? '' : folder,
         value: real
       };
     }
@@ -610,13 +658,14 @@ var JSONResponse = {
       }
 
 
+      //不能注释，前面在 JSONResponse.compareWithStandard(values[0][tk], real[tk]  居然没有判断出来 COMPARE_KEY_MORE
       if (max.code < JSONResponse.COMPARE_KEY_MORE) { //多出key
         log('compareWithStandard  max < COMPARE_KEY_MORE >> ');
 
         for (var k in real) {
           log('compareWithStandard  for k = ' + k + ' >> ');
 
-          if (k != null && tks.indexOf(k) < 0) {
+          if (k != null && real[k] != null && (values == null || values[0] == null || values[0][k] == null)) { //解决 null 值总是提示是新增的，且无法纠错 tks.indexOf(k) < 0) {
             log('compareWithStandard  k != null && tks.indexOf(k) < 0 >> max = COMPARE_KEY_MORE;');
 
             max.code = JSONResponse.COMPARE_KEY_MORE;

@@ -12,6 +12,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.*/
 
+var DEBUG = true
 
 /**util for generate code
  * @author Lemon
@@ -19,23 +20,81 @@
 var CodeUtil = {
   TAG: 'CodeUtil',
 
+  //从倒数第二个和最后一个 / 中间截取表名  /store/product/list
+  getTableFromUrl: function(url) {
+    if (url == null || url == '') {
+      return ''
+    }
+
+    var ind = url.lastIndexOf('/');
+    var model = ind < 0 ? '' : url.substring(0, ind);
+    ind = ind < 0 ? -1 : model.lastIndexOf('/');
+    model = ind < 0 ? '' : model.substring(ind + 1);
+
+    return CodeUtil.getTableFromKey(model)
+  },
+
+  getTableFromKey: function(model) {
+    if (model == null || model == '') {
+      return ''
+    }
+
+    if (model.endsWith('List')) {
+      model = model.substring(0, model.length - 'List'.length)
+    }
+
+    if (model.endsWith('DTO')) {
+      model = model.substring(0, model.length - 'DTO'.length)
+    }
+    if (model.endsWith('Resp')) {
+      model = model.substring(0, model.length - 'Resp'.length)
+    }
+    else if (model.endsWith('Res')) {
+      model = model.substring(0, model.length - 'Res'.length)
+    }
+    else if (model.endsWith('Result')) {
+      model = model.substring(0, model.length - 'Result'.length)
+    }
+
+    if (model.endsWith('Detail')) {
+      model = model.substring(0, model.length - 'Detail'.length)
+    }
+    if (model.endsWith('Info')) {
+      model = model.substring(0, model.length - 'Info'.length)
+    }
+    if (model.endsWith('Record')) {
+      model = model.substring(0, model.length - 'Record'.length)
+    }
+
+    for (var i = model.length - 1; i > 0; i--) {  //倒序找出最后一个非小写字母，然后截断
+      if (/[a-z]/.test(model.charAt(i)) != true) {
+        // alert('CodeUtil.getTableFromUrl  return name.substring(i) = ' + model.substring(i))
+        if (/[A-Z]/.test(model.charAt(i))) {
+          return model.substring(i);
+        }
+        return StringUtil.firstCase(model.substring(i + 1), true);
+      }
+    }
+
+    return StringUtil.firstCase(model, true);
+  },
+
   /**生成JSON的注释
    * @param reqStr //已格式化的JSON String
    * @param tableList
    * @return parseComment
    */
-  parseComment: function (reqStr, tableList, method, database) { //怎么都获取不到真正的长度，cols不行，默认20不变，maxLineLength不行，默认undefined不变 , maxLineLength) {
+  parseComment: function (reqStr, tableList, method, database, url, isAPIJSON) { //怎么都获取不到真正的长度，cols不行，默认20不变，maxLineLength不行，默认undefined不变 , maxLineLength) {
     if (StringUtil.isEmpty(reqStr)) {
       return '';
     }
-    method = method == null ? 'GET' : method.toUpperCase();
-
+    method = (! isAPIJSON) || method == null ? 'GET' : method.toUpperCase();
 
     var lines = reqStr.split('\n');
     var line;
 
     var depth = 0;
-    var names = [];
+    var names = [isAPIJSON ? '' : CodeUtil.getTableFromUrl(url)];
     var isInSubquery = false;
 
     var index;
@@ -43,12 +102,13 @@ var CodeUtil = {
     var value;
 
     var comment;
+    var useLastName = true;
     for (var i = 0; i < lines.length; i ++) {
       line = lines[i].trim();
 
       //每一种都要提取:左边的key
       index = line == null ? -1 : line.indexOf(': '); //可能是 ' 或 "，所以不好用 ': , ": 判断
-      key = index < 0 ? '' : line.substring(1, index - 1);
+      key = index < 0 ? (useLastName ? names[depth] : '') : line.substring(1, index - 1);
 
       if (line.endsWith(',')) {
         line = line.substring(0, line.length - 1);
@@ -59,16 +119,42 @@ var CodeUtil = {
         isInSubquery = key.endsWith('@');
 
         depth ++;
+        if (! isAPIJSON) {
+          key = CodeUtil.getTableName4See(key);
+        }
         names[depth] = key;
 
-        comment = CodeUtil.getComment4Request(tableList, names[depth - 1], key, null, method, false, database);
+        comment = CodeUtil.getComment4Request(tableList, names[depth - 1], useLastName ? null : key, null, method, false, database, isAPIJSON);
+        useLastName = false;
       }
       else {
+        useLastName = false;
+
         if (line.endsWith('}')) {
           isInSubquery = false;
 
           if (line.endsWith('{}')) { //对象，判断是不是Table，再加对应的注释
-            comment = CodeUtil.getComment4Request(tableList, names[depth], key, null, method, false, database);
+            if (! isAPIJSON) {
+              key = CodeUtil.getTableName4See(key);
+            }
+
+            comment = CodeUtil.getComment4Request(tableList, names[depth], key, null, method, false, database, isAPIJSON);
+          }
+          else {
+            depth --;
+            continue;
+          }
+        }
+        else if (line.endsWith(']')) {
+          isInSubquery = false;
+
+          if (line.endsWith('[]')) { //对象，判断是不是Table，再加对应的注释
+            // if (! isAPIJSON && JSONObject.isArrayKey(key)) {
+            //   key = CodeUtil.getTableName4See(key.substring(0, key.length - 4));
+            // }
+            //
+            // comment = CodeUtil.getComment4Request(tableList, names[depth], key, null, method, false, database);
+            continue;
           }
           else {
             depth --;
@@ -80,9 +166,20 @@ var CodeUtil = {
         }
         else { //其它，直接在后面加上注释
           var isArray = line.endsWith('['); // []  不影响
-          // alert('depth = ' + depth + '; line = ' + line + '; isArray = ' + isArray);
-          comment = value == 'null' ? ' ! null无效' : CodeUtil.getComment4Request(tableList, names[depth], key
-            , isArray ? '' : line.substring(index + 2).trim(), method, isInSubquery, database);
+          if (isArray && (! isAPIJSON) && JSONObject.isArrayKey(key)) {
+            useLastName = true;
+            depth ++;
+
+            var tn = CodeUtil.getTableName4See(key.substring(0, key.length - 4));
+            names[depth + 1] = names[depth] = tn; // itemList: [ { itemId:1, itemName:"Car" } ]
+            // alert('depth = ' + depth + '; line = ' + line + '; isArray = ' + isArray + '; names = ' + JSON.stringify(names));
+            comment = CodeUtil.getComment4Request(tableList, names[depth - 1], tn, null, method, false, database, isAPIJSON);
+            // alert('comment = ' + comment);
+          }
+          else {
+            comment = value == 'null' ? ' ! null无效' : CodeUtil.getComment4Request(tableList, names[depth], key
+              , isArray ? (useLastName ? null : '') : line.substring(index + 2).trim(), method, isInSubquery, database, isAPIJSON);
+          }
         }
       }
 
@@ -90,6 +187,19 @@ var CodeUtil = {
     }
 
     return lines.join('\n');
+  },
+
+  getTableName4See: function(key) {
+    if (key == null || key.length <= 3) {
+      return key;
+    }
+    if (key.endsWith('BaseReq')) {
+      key = key.substring(0, key.length - 7);
+    }
+    else if (key.endsWith('Req')) {
+      key = key.substring(0, key.length - 3);
+    }
+    return StringUtil.firstCase(key, true);
   },
 
   /**封装 生成 iOS-Swift 请求 JSON 的代码
@@ -1757,6 +1867,10 @@ var CodeUtil = {
         if (t.endsWith('[]')) {
           t = t.substring(0, t.length - 2);
         }
+        else if (t.endsWith('ist')) {
+          t = t.substring(0, t.length - 4);
+        }
+        t = StringUtil.firstCase(t, true);
 
         var isTableKey = JSONObject.isTableKey(t);
         if (isTable && isSmart) {
@@ -1807,6 +1921,10 @@ var CodeUtil = {
 
         var t = JSONResponse.getTableName(key);
         var isTableKey = JSONObject.isTableKey(t);
+        if (isTableKey) {
+          t = StringUtil.firstCase(t, true);
+        }
+
         if (isTable && isSmart) {
           s += padding + 'var ' + k + ':' + (isTableKey ? t : 'JSONObject') + '? = ' + name + '.get' + StringUtil.firstCase(k, true) + '()'
         }
@@ -1919,6 +2037,10 @@ var CodeUtil = {
         if (t.endsWith('[]')) {
           t = t.substring(0, t.length - 2);
         }
+        else if (t.endsWith('ist')) {
+          t = t.substring(0, t.length - 4);
+        }
+        t = StringUtil.firstCase(t, true);
 
         var isTableKey = JSONObject.isTableKey(t);
         if (isTable && isSmart) {
@@ -1969,6 +2091,10 @@ var CodeUtil = {
 
         var t = JSONResponse.getTableName(key);
         var isTableKey = JSONObject.isTableKey(t);
+        if (isTableKey) {
+          t = StringUtil.firstCase(t, true);
+        }
+
         if (isTable && isSmart) {
           s += innerPadding + (isTableKey ? t : 'JSONObject') + ' ' + k + ' = ' + name + '.get' + StringUtil.firstCase(k, true) + '();'
         }
@@ -4137,11 +4263,14 @@ var CodeUtil = {
    * @return {*}
    */
   getCommentFromDoc: function (tableList, tableName, columnName, method, database, onlyTableAndColumn) {
-    log('getCommentFromDoc  tableName = ' + tableName + '; columnName = ' + columnName + '; method = ' + method + '; database = ' + database + '; tableList = \n' + JSON.stringify(tableList));
+    if (DEBUG) {
+      log('getCommentFromDoc  tableName = ' + tableName + '; columnName = ' + columnName + '; method = ' + method + '; database = ' + database + '; tableList = \n' + JSON.stringify(tableList));
+    }
 
     if (tableList == null || tableList.length <= 0) {
       return '...';
     }
+    tableName = StringUtil.firstCase(tableName, true);
 
     var item;
 
@@ -4156,7 +4285,9 @@ var CodeUtil = {
       if (table == null || tableName != CodeUtil.getModelName(table.table_name)) {
         continue;
       }
-      log('getDoc [] for i=' + i + ': table = \n' + format(JSON.stringify(table)));
+      if (DEBUG) {
+        log('getDoc [] for i=' + i + ': table = \n' + format(JSON.stringify(table)));
+      }
 
       if (StringUtil.isEmpty(columnName)) {
         return database == 'POSTGRESQL'

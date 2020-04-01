@@ -88,7 +88,7 @@
        * @param key
        * @return {boolean}
        */
-      Vue.prototype.onRenderJSONItem = function (val, key, path) {
+      Vue.prototype.onRenderJSONItem = function (val, key, _$_this_$_) {
         if (isSingle || key == null) {
           return true
         }
@@ -98,11 +98,26 @@
         }
 
         try {
+          var $this = {}
+          var path = ''
+          var defaultTable = null
+          if (val instanceof Object || val instanceof Array) {
+            if (_$_this_$_ != null) {
+              $this = JSON.parse(_$_this_$_)
+              path = $this.path
+              defaultTable = $this.table
+            }
+          }
+
           if (val instanceof Array) {
-            if (val[0] instanceof Object && (val[0] instanceof Array == false) && JSONObject.isArrayKey(key)) {
+            if (val[0] instanceof Object && (val[0] instanceof Array == false)) { // && JSONObject.isArrayKey(key)) {
               // alert('onRenderJSONItem  key = ' + key + '; val = ' + JSON.stringify(val))
 
-              var ckey = key.substring(0, key.lastIndexOf('[]'));
+              var arrayIndex = key.lastIndexOf('[]')
+              if (arrayIndex < 0) {
+                arrayIndex = key.lastIndexOf('ist') - 1
+              }
+              var ckey = arrayIndex < 0 ? key : key.substring(0, arrayIndex);
 
               var aliaIndex = ckey.indexOf(':');
               var objName = aliaIndex < 0 ? ckey : ckey.substring(0, aliaIndex);
@@ -110,10 +125,32 @@
               var firstIndex = objName.indexOf('-');
               var firstKey = firstIndex < 0 ? objName : objName.substring(0, firstIndex);
 
+              if (firstKey.endsWith('DTO')) {
+                firstKey = firstKey.substring(0, firstKey.length - 'DTO'.length)
+              }
+              if (firstKey.endsWith('Resp')) {
+                firstKey = firstKey.substring(0, firstKey.length - 'Resp'.length)
+              }
+              else if (firstKey.endsWith('Res')) {
+                firstKey = firstKey.substring(0, firstKey.length - 'Res'.length)
+              }
+              else if (firstKey.endsWith('Result')) {
+                firstKey = firstKey.substring(0, firstKey.length - 'Result'.length)
+              }
+
+              if (firstKey.endsWith('Info')) {
+                firstKey = firstKey.substring(0, firstKey.length - 'Info'.length)
+              }
+
+              if (StringUtil.isEmpty(firstKey, true) && defaultTable != null) {
+                firstKey = defaultTable
+              }
+              var isTableKey = JSONObject.isTableKey(firstKey)
+
               for (var i = 0; i < val.length; i++) {
                 var cPath = (StringUtil.isEmpty(path, false) ? '' : path + '/') + key;
 
-                if (JSONObject.isTableKey(firstKey)) {
+                if (isTableKey) {
                   // var newVal = JSON.parse(JSON.stringify(val[i]))
 
                   var newVal = {}
@@ -124,7 +161,7 @@
 
                   val[i]._$_this_$_ = JSON.stringify({
                     path: cPath + '/' + i,
-                    table: firstKey
+                    table: CodeUtil.getTableFromKey(firstKey)
                   })
 
                   for (var k in newVal) {
@@ -132,7 +169,10 @@
                   }
                 }
                 else {
-                  this.onRenderJSONItem(val[i], '' + i, cPath);
+                  this.onRenderJSONItem(val[i], '' + i, JSON.stringify({
+                    path: cPath + '/' + i,
+                    table: CodeUtil.getTableFromKey(firstKey)
+                  }));
                 }
 
                 // this.$children[i]._$_this_$_ = key
@@ -141,6 +181,10 @@
             }
           }
           else if (val instanceof Object) {
+            if (val._$_this_$_ != null) {
+              return true
+            }
+
             var aliaIndex = key.indexOf(':');
             var objName = aliaIndex < 0 ? key : key.substring(0, aliaIndex);
 
@@ -152,9 +196,35 @@
               delete val[k]
             }
 
+            if (objName == 'data') {
+              objName = ''
+            }
+            else {
+              if (objName.endsWith('DTO')) {
+                objName = objName.substring(0, objName.length - 'DTO'.length)
+              }
+              if (objName.endsWith('Resp')) {
+                objName = objName.substring(0, objName.length - 'Resp'.length)
+              }
+              else if (objName.endsWith('Res')) {
+                objName = objName.substring(0, objName.length - 'Res'.length)
+              }
+              else if (objName.endsWith('Result')) {
+                objName = objName.substring(0, objName.length - 'Result'.length)
+              }
+
+              if (objName.endsWith('Info')) {
+                objName = objName.substring(0, objName.length - 'Info'.length)
+              }
+            }
+
+            if (StringUtil.isEmpty(objName, true) && defaultTable != null) {
+              objName = defaultTable
+            }
+
             val._$_this_$_ = JSON.stringify({
               path: (StringUtil.isEmpty(path, false) ? '' : path + '/') + key,
-              table: JSONObject.isTableKey(objName) ? objName : null
+              table: JSONObject.isTableKey(objName) ? CodeUtil.getTableFromKey(objName) : null
             })
 
             for (var k in newVal) {
@@ -238,7 +308,12 @@
               var aliaIndex = key == null ? -1 : key.indexOf(':');
               var objName = aliaIndex < 0 ? key : key.substring(0, aliaIndex);
 
-              if (JSONObject.isTableKey(objName)) {
+              if (key == 'data') {
+                if (path == 'data') {
+                  path = ''
+                }
+              }
+              else if (JSONObject.isTableKey(objName)) {
                 table = objName
               }
               else if (JSONObject.isTableKey(table)) {
@@ -268,7 +343,11 @@
             }
 
             if (val instanceof Array && JSONObject.isArrayKey(key)) {
-              var key2 = key == null ? null : key.substring(0, key.lastIndexOf('[]'));
+              var arrayIndex = key.lastIndexOf('[]')
+              if (arrayIndex < 0) {
+                arrayIndex = key.lastIndexOf('ist') - 1
+              }
+              var key2 = key.substring(0, arrayIndex);
 
               var aliaIndex = key2 == null ? -1 : key2.indexOf(':');
               var objName = aliaIndex < 0 ? key2 : key2.substring(0, aliaIndex);
@@ -286,11 +365,11 @@
                   firstIndex = objName.indexOf('-');
                   column = firstIndex < 0 ? objName : objName.substring(0, firstIndex)
 
-                  var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], table, column, App.getMethod(), App.database, true); // this.getResponseHint({}, table, $event
+                  var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], StringUtil.firstCase(table, true), column, App.getMethod(), App.database, true); // this.getResponseHint({}, table, $event
                   s0 = column + (StringUtil.isEmpty(c, true) ? '' : ': ' + c)
                 }
 
-                var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], table, null, App.getMethod(), App.database, true);
+                var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], StringUtil.firstCase(table, true), null, App.getMethod(), App.database, true);
                 s = (StringUtil.isEmpty(path) ? '' : path + '/') + key + ' 中 '
                   + (
                     StringUtil.isEmpty(c, true) ? '' : table + ': '
@@ -312,7 +391,7 @@
           }
           // alert('setResponseHint  table = ' + table + '; column = ' + column)
 
-          var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], table, column, App.getMethod(), App.database, true);
+          var c = CodeUtil.getCommentFromDoc(docObj == null ? null : docObj['[]'], StringUtil.firstCase(table, true), column, App.getMethod(), App.database, true);
 
           s += (StringUtil.isEmpty(path) ? '' : path + '/') + (StringUtil.isEmpty(column) ? (StringUtil.isEmpty(table) ? key : table) : column) + (StringUtil.isEmpty(c, true) ? '' : ': ' + c)
         }
@@ -461,6 +540,8 @@
   }
   //这些全局变量不能放在data中，否则会报undefined错误
 
+  var DEBUG = true
+
   var baseUrl
   var inputted
   var handler
@@ -573,9 +654,11 @@
       header: {},
       page: 0,
       count: 100,
+      search: '',
       testCasePage: 0,
       testCaseCount: 50,
-      indent: '    '
+      testCaseSearch: '',
+      indent: '  '
     },
     methods: {
 
@@ -655,49 +738,89 @@
       },
 
       baseViewToDiff: function () {
-        App.baseview = 'diff'
-        App.diffTwo()
+        this.baseview = 'diff'
+        this.diffTwo()
       },
 
       // 回到格式化视图
       baseViewToFormater: function () {
-        App.baseview = 'formater'
-        App.view = 'code'
-        App.showJsonView()
+        this.baseview = 'formater'
+        this.view = 'code'
+        this.showJsonView(jsonlint.parse(this.jsoncon))
       },
 
       // 根据json内容变化格式化视图
-      showJsonView: function () {
-        if (App.baseview === 'diff') {
+      showJsonView: function (json, table) {
+        this.jsoncon = json == null ? '' : JSON.stringify(json, null, '    ')
+
+        if (this.baseview === 'diff') {
           return
         }
         try {
           if (this.jsoncon.trim() === '') {
-            App.view = 'empty'
+            this.view = 'empty'
           } else {
-            App.view = 'code'
+            this.view = 'code'
 
-            if (isSingle) {
-              App.jsonhtml = jsonlint.parse(this.jsoncon)
-            }
-            else {
-              App.jsonhtml = Object.assign({
+            json = jsonlint.parse(this.jsoncon)  //避免改变原来的值
+
+            if (isSingle != true && json instanceof Array == false && json instanceof Object) {
+
+              if (json.data instanceof Object && StringUtil.isEmpty(table) != true) {
+                if (json.data instanceof Array) {
+                  var arr = json.data
+                  for (var i in arr) {
+                    if (arr[i] instanceof Array == false && arr[i] instanceof Object) {
+                      //把 data 及 data/list 转为对应的表
+                      arr[i] = Object.assign({
+                        _$_this_$_: JSON.stringify({
+                          path: 'data/' + i,
+                          table: table
+                        })
+                      }, arr[i])
+                    }
+                  }
+                }
+                else {
+                  //把 data 及 data/list 转为对应的表
+                  json.data = Object.assign({
+                    _$_this_$_: JSON.stringify({
+                      path: 'data',
+                      table: table
+                    })
+                  }, json.data)
+                }
+              }
+
+              //解决最外层多了路径 'data/msg'
+              json = Object.assign({
                 _$_this_$_: JSON.stringify({
-                  path: null,
-                  table: null
+                  path: '',
+                  table: table
                 })
-              }, jsonlint.parse(this.jsoncon))
+              }, json)
+
             }
 
+            this.jsonhtml = json
           }
-        } catch (ex) {
-          App.view = 'error'
-          App.error = {
+        }
+        catch (ex) {
+          this.view = 'error'
+          this.error = {
             msg: ex.message
           }
         }
       },
 
+      isAPIJSON: function(url) {
+        return ! this.isGraphQL(url)
+      },
+      isGraphQL: function(url) {
+        var baseUrl = url || this.getBaseUrl()
+        return baseUrl.indexOf('graphql') >= 0 || App.schema == 'graphql'
+
+      },
 
       showUrl: function (isAdminOperation, branchUrl) {
         if (StringUtil.isEmpty(this.host, true)) {  //显示(可编辑)URL Host
@@ -779,19 +902,39 @@
         return req == null ? null : req.tag
       },
 
-      getRequest: function (json, defaultValue) {
-        var s = App.toDoubleJSON(json, defaultValue);
-        if (StringUtil.isEmpty(s, true)) {
-          return defaultValue
+      getRequest: function (json, defaultValue, graphqlQuery) {
+        var req
+        if (json != null && json instanceof Object) {
+          req = json
         }
-        try {
-          return jsonlint.parse(s);
+        else {
+          var s = App.toDoubleJSON(json, defaultValue)
+
+          if (StringUtil.isEmpty(s, true)) {
+            req = defaultValue
+          }
+          else {
+            try {
+              req = jsonlint.parse(s);
+            }
+            catch (e) {
+              log('main.getRequest', 'try { return jsonlint.parse(s); \n } catch (e) {\n' + e.message)
+              log('main.getRequest', 'req = jsonlint.parse(App.removeComment(s));')
+              req = jsonlint.parse(App.removeComment(s));
+            }
+          }
         }
-        catch (e) {
-          log('main.getRequest', 'try { return jsonlint.parse(s); \n } catch (e) {\n' + e.message)
-          log('main.getRequest', 'return jsonlint.parse(App.removeComment(s));')
-          return jsonlint.parse(App.removeComment(s));
+
+        if (graphqlQuery != null) {
+          req = {
+            //FIXME 是否必要？
+            // "operationName": "loginByPassword",
+            "variables": req,
+            "query": App.getGraphQLQuery(graphqlQuery)
+          }
         }
+
+        return req;
       },
       getGraphQLQuery: function (query, defaultValue) {
         if (StringUtil.isEmpty(query, true)) {
@@ -1143,7 +1286,21 @@
           App.showUrl(false, branch)
 
           App.showTestCase(false, App.isLocalShow)
-          vInput.value = StringUtil.get(item.request)
+
+          if (App.type == REQUEST_TYPE_GQL) {
+            var req = item.request == null ? null : JSON.parse(item.request)
+            vInput.value = req == null || req.variables == null
+              ? ""
+              : (typeof req.variables != 'string' // req.variables instanceof Object
+                ? JSON.stringify(req.variables, null, App.indent)
+                : req.variables
+              )
+            vGraphQLInput.value = StringUtil.get(req == null ? null : req.query)
+          }
+          else {
+            vInput.value = StringUtil.get(item.request)
+          }
+
           vHeader.value = StringUtil.get(item.header)
           vRandom.value = StringUtil.get(item.random)
           App.onChange(false)
@@ -1301,6 +1458,14 @@
 
           var url = App.server + '/post'
           var currentResponse = StringUtil.isEmpty(App.jsoncon, true) ? {} : App.removeDebugInfo(JSON.parse(App.jsoncon))
+          var reqStr = App.toDoubleJSON(inputted)
+          if (App.type == REQUEST_TYPE_GQL) {
+            reqStr = JSON.stringify({
+              "variables": reqStr,
+              "query": App.getGraphQLQuery(vGraphQLInput.value)
+            }, null, App.indent)
+          }
+
           var req = isExportRandom ? {
             format: false,
             'Random': {
@@ -1318,7 +1483,7 @@
               'name': App.exTxt.name,
               'type': App.type,
               'url': '/' + App.getMethod(),
-              'request': App.toDoubleJSON(inputted),
+              'request': reqStr,
               'header': vHeader.value
             },
             'TestRecord': {
@@ -1383,17 +1548,34 @@
         }
       },
 
-      newRandomConfig: function (path, key, value) {
+      newRandomConfig: function (path, key, value, isAPIJSON, isGraphQL) {
         if (key == null) {
           return ''
         }
-        if (path == '' && (key == 'tag' || key == 'version' || key == 'format')) {
-          return ''
+        if (isGraphQL) {
+          if (path == '' && key != 'variables') {
+            return ''
+          }
+        }
+
+        if (isAPIJSON) {
+          if (path == '' && (key == 'tag' || key == 'version' || key == 'format')) {
+            return ''
+          }
+        }
+
+        var childPath = path == null || path == '' ? key : path + '/' + key
+        var prefix = '\n' + childPath + ' : '
+
+        if (isAPIJSON != true && key =='page') {
+          return prefix + 'ORDER_INT(1, 10)'
+        }
+        if (isAPIJSON != true && key =='pageSize') {
+          return prefix + 'ORDER_IN(undefined, null, 5, 10, 15, 20'
+            + ([5, 10, 15, 20].indexOf(value) >= 0 ? ')' : ', ' + value + ')')
         }
 
         var config = ''
-        var childPath = path == null || path == '' ? key : path + '/' + key
-        var prefix = '\n' + childPath + ' : '
 
         if (value instanceof Array) {
           var val
@@ -1417,36 +1599,38 @@
           for(var k in value) {
             var v = value[k]
 
-            var isAPIJSONArray = v instanceof Object && v instanceof Array == false
-              && k.startsWith('@') == false && (k.endsWith('[]') || k.endsWith('@'))
-            if (isAPIJSONArray) {
-              if (k.endsWith('@')) {
-                delete v.from
-                delete v.range
-              }
+            if (isAPIJSON) {
+              var isAPIJSONArray = v instanceof Object && v instanceof Array == false
+                && k.startsWith('@') == false && (k.endsWith('[]') || k.endsWith('@'))
+              if (isAPIJSONArray) {
+                if (k.endsWith('@')) {
+                  delete v.from
+                  delete v.range
+                }
 
-              prefix = '\n' + (childPath == null || childPath == '' ? '' : childPath + '/') + k + '/'
-              if (v.hasOwnProperty('page')) {
-                config += prefix + 'page : ' + 'ORDER_INT(0, 10)'
-                delete v.page
-              }
-              if (v.hasOwnProperty('count')) {
-                config += prefix + 'count : ' + 'ORDER_IN(undefined, null, 0, 1, 5, 10, 20'
-                  + ([0, 1, 5, 10, 20].indexOf(v.count) >= 0 ? ')' : ', ' + v.count + ')')
-                delete v.count
-              }
-              if (v.hasOwnProperty('query')) {
-                config += prefix + 'query : ' + 'ORDER_IN(undefined, null, 0, 1, 2)'
-                delete v.query
+                prefix = '\n' + (childPath == null || childPath == '' ? '' : childPath + '/') + k + '/'
+                if (v.hasOwnProperty('page')) {
+                  config += prefix + 'page : ' + 'ORDER_INT(0, 10)'
+                  delete v.page
+                }
+                if (v.hasOwnProperty('count')) {
+                  config += prefix + 'count : ' + 'ORDER_IN(undefined, null, 0, 1, 5, 10, 20'
+                    + ([0, 1, 5, 10, 20].indexOf(v.count) >= 0 ? ')' : ', ' + v.count + ')')
+                  delete v.count
+                }
+                if (v.hasOwnProperty('query')) {
+                  config += prefix + 'query : ' + 'ORDER_IN(undefined, null, 0, 1, 2)'
+                  delete v.query
+                }
               }
             }
 
-            config += App.newRandomConfig(childPath, k, v)
+            config += App.newRandomConfig(childPath, k, v, isAPIJSON, isGraphQL)
           }
         }
         else {
           //自定义关键词
-          if (key.startsWith('@')) {
+          if (isAPIJSON && key.startsWith('@')) {
             return config
           }
 
@@ -1458,10 +1642,10 @@
             if (isId) {
               config += prefix + 'ORDER_IN(undefined, null, ' + value + ')'
               if (value >= 1000000000) { //PHP 等语言默认精确到秒 1000000000000) {
-                config += '\n//可替代上面的 ' + prefix.substring(1) + 'RANDOM_INT(' + Math.round(0.9 * value) + ', ' + Math.round(1.1 * value) + ')'
+                config += '\n//可替代上面的 ' + prefix.substring(1) + 'RANDOM_INT(' + Math.round(0.9*value) + ', ' + Math.round(1.1*value) + ')'
               }
               else {
-                config += '\n//可替代上面的 ' + prefix.substring(1) + 'RANDOM_INT(1, ' + (10 * value) + ')'
+                config += '\n//可替代上面的 ' + prefix.substring(1) + 'RANDOM_INT(1, ' + (10*value) + ')'
               }
             }
             else {
@@ -1471,7 +1655,7 @@
               var keep = dotIndex < 0 ? 2 : valStr.length - dotIndex - 1
 
               if (value < 0) {
-                config += prefix + (hasDot ? 'RANDOM_NUM' : 'RANDOM_INT') + '(' + (100 * value) + (hasDot ? ', 0, ' + keep + ')' : ', 0)')
+                config += prefix + (hasDot ? 'RANDOM_NUM' : 'RANDOM_INT') + '(' + (100*value) + (hasDot ? ', 0, ' + keep + ')' : ', 0)')
               }
               else if (value > 0 && value < 1) {  // 0-1 比例
                 config += prefix + 'RANDOM_NUM(0, 1, ' + keep + ')'
@@ -1481,8 +1665,8 @@
               }
               else {
                 config += prefix + (dotIndex < 0 && value <= 10
-                      ? 'ORDER_INT(0, 10)'
-                      : ((hasDot ? 'RANDOM_NUM' : 'RANDOM_INT') + '(0, ' + 100 * value + (hasDot ? ', ' + keep + ')' : ')'))
+                    ? 'ORDER_INT(0, 10)'
+                    : ((hasDot ? 'RANDOM_NUM' : 'RANDOM_INT') + '(0, ' + 100*value + (hasDot ? ', ' + keep + ')' : ')'))
                   )
                 var hasDot = String(value).indexOf('.') >= 0
                 if (value < 0) {
@@ -1501,9 +1685,11 @@
             }
           }
           else if (typeof value == 'string') {
-            //引用赋值 || 远程函数 || 匹配条件范围
-            if (key.endsWith('@') || key.endsWith('()') || key.endsWith('{}')) {
-              return config
+            if (isAPIJSON) {
+              //引用赋值 || 远程函数 || 匹配条件范围
+              if (key.endsWith('@') || key.endsWith('()') || key.endsWith('{}')) {
+                return config
+              }
             }
 
             config += prefix + 'ORDER_IN(undefined, null, ""' + (value == '' ? ')' : ', "' + value + '")')
@@ -1646,7 +1832,7 @@
             }
             else {
               var suffix = name.length >= 3 ? name.substring(name.length - 3).toLowerCase() : null
-              if (suffix == 'dto') {
+              if (suffix == 'req' || suffix == 'dto') {
                 val = '{}'
               } else {
                 val = 'null'
@@ -1789,23 +1975,33 @@
                 App.onResponse(url, res, err)
 
                 var data = res.data || {}
-                var user = data.code == 200 ? data.user : null
-                if (user == null) {
-                  if (callback != null) {
-                    callback(false, index, err)
+                var isAPIJSON = App.isAPIJSON()
+                var isGraphQL = App.isGraphQL()
+
+                if (App.isSuccess(data, isAPIJSON, isGraphQL)) {
+                  var user = (isAPIJSON ? data.user : data.data) || {}
+                  if (isGraphQL) {
+                    user = user.loginByPassword
+                  }
+
+                  if (user != null) {
+                    item.id = isAPIJSON ? user.id : user.userId
+                    item.name = user.name
+                    item.remember = data.remember
+                    item.isLoggedIn = true
+
+                    App.saveCache(App.getBaseUrl(), 'currentAccountIndex', App.currentAccountIndex)
+                    App.saveCache(App.getBaseUrl(), 'accounts', App.accounts)
+
+                    if (callback != null) {
+                      callback(true, index, err)
+                    }
+                    return
                   }
                 }
-                else {
-                  item.name = user.name
-                  item.remember = data.remember
-                  item.isLoggedIn = true
 
-                  App.saveCache(App.getBaseUrl(), 'currentAccountIndex', App.currentAccountIndex)
-                  App.saveCache(App.getBaseUrl(), 'accounts', App.accounts)
-
-                  if (callback != null) {
-                      callback(true, index, err)
-                  }
+                if (callback != null) {
+                  callback(false, index, err)
                 }
               });
             }
@@ -1837,6 +2033,27 @@
         }
       },
 
+      isSuccess(data, isAPIJSON, isGraphQL) {
+        if (data == null) {
+          return false
+        }
+        if (isAPIJSON == null) {
+          isAPIJSON = this.isAPIJSON()
+        }
+        if (isAPIJSON == true) {
+          return data.code == CODE_SUCCESS
+        }
+
+        if (isGraphQL == null) {
+          isGraphQL = this.isGraphQL()
+        }
+        if (isGraphQL == true) {
+          return data.errors == null || data.errors.length <= 0
+        }
+
+        return true
+      },
+
       removeAccountTab: function () {
         if (App.accounts.length <= 1) {
           alert('至少要 1 个测试账号！')
@@ -1852,7 +2069,7 @@
         App.saveCache(App.getBaseUrl(), 'accounts', App.accounts)
       },
       addAccountTab: function () {
-        App.showLogin(true, false)
+        this.showLogin(true, false)
       },
 
 
@@ -1893,7 +2110,9 @@
 
           App.isTestCaseShow = false
 
+          var search = StringUtil.isEmpty(App.testCaseSearch, true) ? null : StringUtil.trim(App.testCaseSearch)
           var url = App.server + '/get'
+
           var req = {
             format: false,
             '[]': {
@@ -1901,7 +2120,10 @@
               'page': App.testCasePage,
               'Document': {
                 '@order': 'version-,date-',
-                'userId': App.User.id
+                'userId': App.User.id,
+                'name*~': search,
+                'url*~': search,
+                '@combine': search == null ? null : 'name*~,url*~'
               },
               'TestRecord': {
                 'documentId@': '/Document/id',
@@ -2081,7 +2303,7 @@
 
         if (isAdminOperation) {
           App.request(isAdminOperation, REQUEST_TYPE_JSON, App.server + '/login', req, {}, function (url, res, err) {
-            if (callback) {
+            if (callback != null) {
               callback(url, res, err)
               return
             }
@@ -2129,12 +2351,14 @@
             }
           }
 
-          App.showUrl(isAdminOperation, '/login')
+
+          var isAPIJSON = App.isAPIJSON()
+          var isGraphQL = App.isGraphQL()
+          App.showUrl(isAdminOperation, isAPIJSON ? '/login' : (isGraphQL ? '/graphql' : 'login'))
 
           vInput.value = JSON.stringify(req, null, App.indent)
-          if (App.type != REQUEST_TYPE_GQL) {
-            App.type = REQUEST_TYPE_JSON
-          }
+
+          App.type = isGraphQL ? REQUEST_TYPE_GQL : REQUEST_TYPE_JSON
           App.showTestCase(false, App.isLocalShow)
           App.onChange(false)
           App.send(isAdminOperation, function (url, res, err) {
@@ -2187,7 +2411,7 @@
             },
             verify: vVerify.value
           },
-          null, '  ')
+          null, App.indent)
         App.showTestCase(false, false)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2218,7 +2442,7 @@
               _password: vPassword.value
             }
           },
-          null, '  ')
+          null, App.indent)
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2249,7 +2473,7 @@
 
         // alert('logout  isAdminOperation = ' + isAdminOperation + '; url = ' + url)
         if (isAdminOperation) {
-          this.request(isAdminOperation, REQUEST_TYPE_JSON, App.server + '/logout', req, {}, function (url, res, err) {
+          this.request(isAdminOperation, REQUEST_TYPE_JSON, this.server + '/logout', req, {}, function (url, res, err) {
             if (callback) {
               callback(url, res, err)
               return
@@ -2263,12 +2487,14 @@
           })
         }
         else {
-          App.showUrl(isAdminOperation, '/logout')
-          vInput.value = JSON.stringify(req, null, App.indent)
-          if (App.type != REQUEST_TYPE_GQL) {
-            App.type = REQUEST_TYPE_JSON
-          }
-          this.showTestCase(false, App.isLocalShow)
+           var isAPIJSON = this.isAPIJSON()
+          var isGraphQL = this.isGraphQL()
+          this.type = isAPIJSON ? REQUEST_TYPE_JSON : (isGraphQL ? REQUEST_TYPE_GQL : REQUEST_TYPE_PARAM)
+          this.showUrl(isAdminOperation, isAPIJSON ? '/logout' : (isGraphQL ? '/graphql' : '/user/logout'))
+
+          vInput.value = '{}'
+          vGraphQLInput.value = '{\n  logout\n}'
+          this.showTestCase(false, this.isLocalShow)
           this.onChange(false)
           this.send(isAdminOperation, callback)
         }
@@ -2284,7 +2510,7 @@
             type: type,
             phone: vAccount.value
           },
-          null, '  ')
+          null, App.indent)
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2300,10 +2526,10 @@
       },
 
       clearUser: function () {
-        App.User.id = 0
-        App.Privacy = {}
-        App.remotes = []
-        App.saveCache(App.server, 'User', App.User) //应该用lastBaseUrl,baseUrl应随watch输入变化重新获取
+        this.User.id = 0
+        this.Privacy = {}
+        this.remotes = []
+        this.saveCache(App.server, 'User', App.User) //应该用lastBaseUrl,baseUrl应随watch输入变化重新获取
       },
 
       /**计时回调
@@ -2381,7 +2607,7 @@
 
           try {
             var m = App.getMethod();
-            var c = isSingle ? '' : CodeUtil.parseComment(after, docObj == null ? null : docObj['[]'], m, App.database)
+            var c = isSingle ? '' : CodeUtil.parseComment(after, docObj == null ? null : docObj['[]'], m, App.database, vUrl.value, App.isAPIJSON())
 
             if (isSingle != true && afterObj.tag == null) {
               m = m == null ? 'GET' : m.toUpperCase()
@@ -2537,7 +2763,9 @@
         }
 
         if (StringUtil.isEmpty(App.host, true)) {
-          if (StringUtil.get(vUrl.value).startsWith('http://') != true && StringUtil.get(vUrl.value).startsWith('https://') != true) {
+
+          var url = StringUtil.get(vUrl.value)
+          if (url.startsWith('http://') != true && url.startsWith('https://') != true && url.startsWith('/') != true) {
             alert('URL 缺少 http:// 或 https:// 前缀，可能不完整或不合法，\n可能使用同域的 Host，很可能访问出错！')
           }
         }
@@ -2560,16 +2788,7 @@
         }
 
         var type = this.type
-        var req = this.getRequest(vInput.value)
-        if (type == REQUEST_TYPE_GQL) {
-          req = {
-            //FIXME 是否必要？
-            "operationName": "IntrospectionQuery",
-            "variables": req,
-            "query": App.getGraphQLQuery(vGraphQLInput.value)
-          }
-        }
-
+        var req = this.getRequest(vInput.value, null, type == REQUEST_TYPE_GQL ? StringUtil.get(vGraphQLInput.value) : null)
         var url = this.getUrl()
 
         vOutput.value = "requesting... \nURL = " + url
@@ -2655,22 +2874,33 @@
       /**请求回调
        */
       onResponse: function (url, res, err) {
-        if (res == null) {
-          res = {}
-        }
-        log('onResponse url = ' + url + '\nerr = ' + err + '\nres = \n' + JSON.stringify(res))
+        log('onResponse url = ' + url + '\nerr = ' + err + '\nres = \n' + (res == null ? 'null' : JSON.stringify(res)))
         if (err != null) {
           vOutput.value = "Response:\nurl = " + url + "\nerror = " + err.message;
+          this.view = 'output'
+          return
+        }
+
+        var data = (res || {}).data
+        if (data != null && data instanceof Object) {
+          var isAPIJSON = this.isAPIJSON(url)
+          var isSuccess = this.isSuccess(data, isAPIJSON, this.isGraphQL(url))
+          if (isSingle && isAPIJSON && isSuccess) { //不格式化错误的结果
+            data = JSONResponse.formatObject(data)
+          }
+
+          vOutput.value = ''
+          this.view = 'code'
+          this.showJsonView(data, CodeUtil.getTableFromUrl(url))  //jsoncon watch 到改变就会渲染，这次是之后额外的一次，为了能显示 Response hint
         }
         else {
-          var data = res.data || {}
-          if (isSingle && data.code == 200) { //不格式化错误的结果
-            data = JSONResponse.formatObject(data);
-          }
-          App.jsoncon = JSON.stringify(data, null, '  ');
-          App.view = 'code';
-          vOutput.value = '';
+          //把字符串强行拆分成对象 { 0: "A", 1: "P", 2: "I" ... }
+          //必须保留对 jsoncon 赋值，否则回归测试后前后对比，后 为 {}
+          // this.jsoncon = JSON.stringify(data) //Error: 在第 1 行发生解析错误  data
+          vOutput.value = data == null ? '' : JSON.stringify(data)
+          this.view = 'output'
         }
+
       },
 
 
@@ -2684,10 +2914,12 @@
             if (isTestCase) {
               this.testCasePage = vTestCasePage.value
               this.testCaseCount = vTestCaseCount.value
+              this.testCaseSearch = vTestCaseSearch.value
             }
             else {
               this.page = vPage.value
               this.count = vCount.value
+              this.search = vSearch.value
             }
 
             this.onPageChange(isTestCase)
@@ -2823,7 +3055,7 @@
           + '\nAPIJSON -Java版: https://github.com/APIJSON/APIJSON '
           + '\nAPIJSON - C# 版: https://github.com/liaozb/APIJSON.NET '
           + '\nAPIJSON - PHP版: https://github.com/qq547057827/apijson-php '
-          + '\nAPIJSON -Node版: https://github.com/kevinaskin/apijson-node '
+          + '\nAPIJSON -GraphQL版: https://github.com/kevinaskin/apijson-node '
           + '\nAPIJSON - Go 版: https://github.com/crazytaxi824/APIJSON '
           + '\nAPIJSON -Python: https://github.com/zhangchunlin/uliweb-apijson '
           + '\n感谢热心的作者们的贡献，GitHub 右上角点 ⭐Star 支持下他们吧 ^_^';
@@ -2861,6 +3093,8 @@
        */
       getDoc: function (callback) {
 
+        var search = StringUtil.isEmpty(App.search, true) ? null : StringUtil.trim(App.search)
+
         App.request(false, REQUEST_TYPE_JSON, this.getBaseUrl() + '/get', {
           format: false,
           '@database': App.database,
@@ -2886,6 +3120,9 @@
               'table_schema': App.schema,
               'table_type': 'BASE TABLE',
               // 'table_name!$': ['\\_%', 'sys\\_%', 'system\\_%'],
+              'table_name*~': search,
+              'table_comment*~': search,
+              '@combine': search == null ? null : 'table_name*~,table_comment*~',
               'table_name{}@': 'sql',
               '@order': 'table_name+', //MySQL 8 SELECT `table_name` 返回的仍然是大写的 TABLE_NAME，需要 AS 一下
               '@column': App.database == 'POSTGRESQL' ? 'table_name' : 'table_name:table_name,table_comment:table_comment'
@@ -3204,7 +3441,7 @@
           return null;
         }
 
-        log('getStructure  tag = ' + tag + '; obj = \n' + format(JSON.stringify(obj)));
+        App.log('getStructure  tag = ' + tag + '; obj = \n' + format(JSON.stringify(obj)));
 
         if (obj instanceof Array) {
           for (var i = 0; i < obj.length; i++) {
@@ -3259,16 +3496,16 @@
           }
         }
 
-        log('getStructure  return obj; = \n' + format(JSON.stringify(obj)));
+        App.log('getStructure  return obj; = \n' + format(JSON.stringify(obj)));
 
         if (tag != null) {
           //补全省略的Table
           if (this.isTableKey(tag) && obj[tag] == null) {
-            log('getStructure  isTableKey(tag) && obj[tag] == null >>>>> ');
+            App.log('getStructure  isTableKey(tag) && obj[tag] == null >>>>> ');
             var realObj = {};
             realObj[tag] = obj;
             obj = realObj;
-            log('getStructure  realObj = \n' + JSON.stringify(realObj));
+            App.log('getStructure  realObj = \n' + JSON.stringify(realObj));
           }
           obj.tag = tag; //补全tag
         }
@@ -3281,7 +3518,7 @@
        * @return
        */
       isTableKey: function (key) {
-        log('isTableKey  typeof key = ' + (typeof key));
+        App.log('isTableKey  typeof key = ' + (typeof key));
         if (key == null) {
           return false;
         }
@@ -3289,7 +3526,7 @@
       },
 
       log: function (msg) {
-        // App.log('Main.  ' + msg)
+        // console.log('Main.  ' + msg)
       },
 
       getDoc4TestCase: function () {
@@ -3355,7 +3592,7 @@
           }
           App.testRandomProcess = '正在测试: ' + 0 + '/' + allCount
 
-          var json = this.getRequest(vInput.value) || {}
+          var json = this.getRequest(vInput.value, null, App.type == REQUEST_TYPE_GQL ? StringUtil.get(vGraphQLInput.value) : null) || {}
           var url = this.getUrl()
           var header = this.getHeader(vHeader.value)
 
@@ -3375,21 +3612,26 @@
             const itemAllCount = random.count || 1
             allCount += (itemAllCount - 1)
 
-            App.testRandomSingle(show, random, App.type, url
-              , App.getRandomJSON(JSON.parse(JSON.stringify(json)), random.config, random.id)
-              , header, function (url, res, err) {
+            var callback = function (url, res, err) {
 
               doneCount ++
               App.testRandomProcess = doneCount >= allCount ? '' : ('正在测试: ' + doneCount + '/' + allCount)
               try {
                 App.onResponse(url, res, err)
-                App.log('test  App.request >> res.data = ' + JSON.stringify(res.data, null, '  '))
+                App.log('testRandom  App.testRandomSingle >> res.data = ' + JSON.stringify(res.data, null, '  '))
               } catch (e) {
-                App.log('test  App.request >> } catch (e) {\n' + e.message)
+                App.log('testRandom  App.testRandomSingle >> } catch (e) {\n' + e.message)
               }
 
-              App.compareResponse(allCount, index, item, res.data, true, App.currentAccountIndex, false, err)
-            })
+              App.compareResponse(allCount, index, item, res.data, true, App.currentAccountIndex, false, err, url)
+            }
+
+            try {
+              App.testRandomSingle(show, random, App.type, url, json, header, callback)
+            } catch (e) {
+              App.log('testRandom  App.testRandomSingle >> } catch (e) {\n' + e.message)
+              callback(url, {}, e)
+            }
           }
         }
       },
@@ -3398,14 +3640,32 @@
        * @param callback
        */
       testRandomSingle: function (show, random, type, url, json, header, callback) {
-        var count = (random || {}).count || 1
+        random = random || {}
+        var count = random.count || 1
         for (var i = 0; i < count; i ++) {
+          var isGQL = type == REQUEST_TYPE_GQL;
+          var raw = JSON.parse(JSON.stringify(json));
+          var req;
+          if (isGQL) {
+            req = this.getRandomJSON(JSON.parse(typeof raw.variables == 'string' ? raw.variables : JSON.stringify(raw.variables)), random.config, random.id)
+            req = {
+              variables: req,
+              query: raw.query
+            }
+          }
+          else {
+            req = this.getRandomJSON(raw, random.config, random.id)
+          }
+
           if (show == true) {
-            vInput.value = JSON.stringify(json, null, App.indent);
+            vInput.value = JSON.stringify(isGQL ? (req.variables || {}) : req, null, App.indent);
+            if (isGQL) {
+              vGraphQLInput.value = StringUtil.get(req.query);
+            }
             this.send(false, callback);
           }
           else {
-            this.request(false, type, url, json, header, callback)
+            this.request(false, type, url, req, header, callback)
           }
         }
       },
@@ -3414,12 +3674,13 @@
        * @param callback
        */
       testRandomWithText: function (show, callback) {
-        var json;
         try {
-          json = this.getRandomJSON(this.getRequest(vInput.value), vRandom.value, 0)
+          this.testRandomSingle(show, {id: 0, config: vRandom.value}, this.type, this.getUrl()
+            , this.getRequest(vInput.value, null, App.type == REQUEST_TYPE_GQL ? StringUtil.get(vGraphQLInput.value) : null)
+            , this.getHeader(vHeader.value), callback)
         }
         catch (e) {
-          log(e)
+          App.log(e)
           vSend.disabled = true
 
           App.view = 'error'
@@ -3429,13 +3690,7 @@
 
           this.isRandomShow = true
           vRandom.select()
-
-          return;
         }
-
-        // alert('> json = ' + JSON.stringify(json, null, '  '))
-
-        this.testRandomSingle(show, null, this.type, this.getUrl(), json, this.getHeader(vHeader.value), callback)
       },
       /**随机测试，动态替换键值对
        * @param show
@@ -3474,8 +3729,8 @@
             }
 
             // path User/id  key id@
-            index = line.lastIndexOf(' : '); // indexOf(' : '); 可能会有 Comment:to
-            var p_k = line.substring(0, index);
+            index = line.lastIndexOf(':'); // indexOf(' : '); 可能会有 Comment:to
+            var p_k = line.substring(0, index).trim();
             var bi = p_k.indexOf(' ');
             path = bi < 0 ? p_k : p_k.substring(0, bi);
 
@@ -3494,7 +3749,7 @@
             }
 
             // value RANDOM_REAL
-            value = line.substring(index + ' : '.length);
+            value = line.substring(index + ':'.length).trim();
 
             if (value == RANDOM_REAL) {
               value = 'randomReal(JSONResponse.getTableName(pathKeys[pathKeys.length - 2]), "' + key + '", 1)';
@@ -3659,7 +3914,8 @@
       startTest: function (list, allCount, isRandom, accountIndex) {
         this.testProcess = '正在测试: ' + 0 + '/' + allCount
 
-        for (var i = 0; i < allCount; i++) {
+        var baseUrl = App.getBaseUrl()
+        for (var i = 0; i < allCount; i ++) {
           const item = list[i]
           const document = item == null ? null : item.Document
           if (document == null || document.name == null) {
@@ -3682,7 +3938,19 @@
             App.log('test  for ' + i + ' >> try { header = App.getHeader(document.header) } catch (e) { \n' + e.message)
           }
 
-          App.request(false, document.type, baseUrl + document.url, App.getRequest(document.request), header, function (url, res, err) {
+          var req
+          if (document.type == REQUEST_TYPE_GQL) {
+            req = document.request == null ? null : JSON.parse(document.request)
+            req = {
+              "variables": App.getRequest(req.variables),
+              "query": req.query
+            }
+          }
+          else {
+            req = App.getRequest(document.request)
+          }
+
+          App.request(false, document.type, baseUrl + document.url, req, header, function (url, res, err) {
 
             try {
               App.onResponse(url, res, err)
@@ -3691,16 +3959,15 @@
               App.log('test  App.request >> } catch (e) {\n' + e.message)
             }
 
-            App.compareResponse(allCount, index, item, res.data, isRandom, accountIndex, false, err)
+            App.compareResponse(allCount, index, item, res.data, isRandom, accountIndex, false, err, url)
           })
         }
-
       },
 
-      compareResponse: function (allCount, index, item, response, isRandom, accountIndex, justRecoverTest, err) {
+      compareResponse: function (allCount, index, item, response, isRandom, accountIndex, justRecoverTest, err, url) {
         var it = item || {} //请求异步
         var d = (isRandom ? App.currentRemoteItem.Document : it.Document) || {} //请求异步
-        var r = isRandom ? it.Random : null //请求异步
+        var r = isRandom ? it.Random : null//请求异步
         var tr = it.TestRecord || {} //请求异步
 
         if (err != null) {
@@ -3713,7 +3980,7 @@
         else {
           var standardKey = App.isMLEnabled != true ? 'response' : 'standard'
           var standard = StringUtil.isEmpty(tr[standardKey], true) ? null : JSON.parse(tr[standardKey])
-          tr.compare = JSONResponse.compareResponse(standard, App.removeDebugInfo(response), '', App.isMLEnabled) || {}
+          tr.compare = JSONResponse.compareResponse(standard, App.removeDebugInfo(response), '', App.isMLEnabled, App.isAPIJSON(url) ? 'code' : 'status', App.isGraphQL(url)) || {}
         }
 
         App.onTestResponse(allCount, index, it, d, r, tr, response, tr.compare || {}, isRandom, accountIndex, justRecoverTest);
@@ -3789,7 +4056,7 @@
         t[isRandom ? r.id : 0] = response
 
         this.tests[String(accountIndex)] = tests
-        this.log('tests = ' + JSON.stringify(tests, null, '  '))
+        this.log('tests = ' + JSON.stringify(tests, null, '    '))
         // this.showTestCase(true)
 
         if (doneCount >= allCount && App.isCrossEnabled && isRandom != true) {
@@ -3808,6 +4075,11 @@
           delete obj["sql:generate|cache|execute|maxExecute"]
           delete obj["depth:count|max"]
           delete obj["time:start|duration|end"]
+
+          if (this.isGraphQL()) {
+            delete obj.extensions
+            delete obj.extensions
+          }
         }
         return obj
       },
@@ -3884,17 +4156,17 @@
         var testRecord = item.TestRecord = item.TestRecord || {}
 
         var tests = App.tests[String(App.currentAccountIndex)] || {}
-        var currentResponse = (tests[isRandom ? random.documentId : document.id] || {})[isRandom ? random.id : 0] || {}
+        var currentResponse = (tests[isRandom ? random.documentId : document.id] || {})[isRandom ? random.id : 0]
 
         var isBefore = item.showType == 'before'
         if (right != true) {
           item.showType = isBefore ? 'after' : 'before'
           Vue.set(isRandom ? App.randoms : App.remotes, index, item);
 
-          var res = isBefore ? JSON.stringify(currentResponse) : testRecord.response
-
-          App.view = 'code'
-          App.jsoncon = res || ''
+          var compare = testRecord.compare || {}
+          var err = isBefore && compare.code == JSONResponse.COMPARE_ERROR ? new Error(compare.path) : null
+          var data = isBefore ? currentResponse : (compare.code == JSONResponse.COMPARE_NO_STANDARD ? null : JSON.parse(testRecord.response))
+          App.onResponse(document.url, { data: data }, err)  // App.view = 'code'; App.jsoncon = res || ''
         }
         else {
           const isML = App.isMLEnabled
@@ -3923,20 +4195,28 @@
             })
           }
           else { //上传新的校验标准
+            if (currentResponse == null) {
+              alert('请先获取正确的结果！ currentResponse == null ! ')
+              return
+            }
 
-          var standard = StringUtil.isEmpty(testRecord.standard, true) ? null : JSON.parse(testRecord.standard);
-          var code = currentResponse.code;
-          delete currentResponse.code; //code必须一致，下面没用到，所以不用还原
+            var standard = StringUtil.isEmpty(testRecord.standard, true) ? null : JSON.parse(testRecord.standard);
 
-          var stddObj = App.isMLEnabled ? JSONResponse.updateStandard(standard || {}, currentResponse) : {};
-          stddObj.code = code;
-          currentResponse.code = code;
+            var isGraphQL = App.isGraphQL()
+            var codeName = isGraphQL ? "errors" : 'code'
+            var code = currentResponse[codeName];
+            delete currentResponse[codeName]; //code必须一致，下面没用到，所以不用还原
+
+            var stddObj = App.isMLEnabled ? JSONResponse.updateStandard(standard || {}, App.removeDebugInfo(currentResponse)) : {};
+            stddObj[codeName] = code;
+            currentResponse[codeName] = code;
 
 
               url = App.server + '/post'
               req = {
                 TestRecord: {
                   userId: App.User.id, //TODO 权限问题？ item.userId,
+                testAccountId: App.getCurrentAccountId(),
                   documentId: isRandom ? random.documentId : document.id,
                   randomId: isRandom ? random.id : null,
                   host: App.getBaseUrl(),
@@ -4017,7 +4297,13 @@
       setRequestHint(index, item, isRandom) {
         var d = item == null ? null : (isRandom ? item.Random : item.Document);
         var r = d == null ? null : (isRandom ? d.config : d.request);
-        this.$refs[isRandom ? 'randomTexts' : 'testCaseTexts'][index].setAttribute('data-hint', r == null ? '' : (isRandom ? r : JSON.stringify(this.getRequest(r), null, ' ')));
+        if (isRandom) {
+          this.$refs['randomTexts'][index].setAttribute('data-hint', r == null ? '' : r);
+        }
+        else {
+          var isGQL = d.type == REQUEST_TYPE_GQL
+          this.$refs['testCaseTexts'][index].setAttribute('data-hint', isGQL ? this.getRequest(r).query : JSON.stringify(this.getRequest(r), null, ' '));
+        }
       },
       //显示详细信息, :data-hint :data, :hint 都报错，只能这样
       setTestHint(index, item, isRandom) {
@@ -4028,11 +4314,11 @@
 // APIJSON >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     },
-    watch: {
-      jsoncon: function () {
-        App.showJsonView()
-      }
-    },
+    // watch: {
+    //   jsoncon: function () {
+    //     this.showJsonView()
+    //   }
+    // },
     computed: {
       theme: function () {
         var th = this.themes[this.checkedTheme]
