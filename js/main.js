@@ -429,21 +429,21 @@
   var REQUEST_TYPE_JSON = 'JSON'  // POST application/json
   var REQUEST_TYPE_GQL = 'GQL'  // POST application/json
 
-  var RANDOM_REAL = 'RANDOM_REAL'
-  var RANDOM_REAL_IN = 'RANDOM_REAL_IN'
+  var RANDOM_DB = 'RANDOM_DB'
+  var RANDOM_DB_IN = 'RANDOM_DB_IN'
   var RANDOM_INT = 'RANDOM_INT'
   var RANDOM_NUM = 'RANDOM_NUM'
   var RANDOM_STR = 'RANDOM_STR'
   var RANDOM_IN = 'RANDOM_IN'
 
-  var ORDER_REAL = 'ORDER_REAL'
+  var ORDER_DB = 'ORDER_DB'
   var ORDER_INT = 'ORDER_INT'
   var ORDER_IN = 'ORDER_IN'
 
   var ORDER_MAP = {}
 
   //TODO 实际请求后填值? 每次请求，还是一次加载一页缓存起来？
-  function randomReal(table, key, count) {
+  function randomDb(table, key, count) {
     var json = {
       count: count,
       from: table
@@ -482,7 +482,7 @@
   }
 
   //TODO 实际请求后填值? 每次请求，还是一次加载一页缓存起来？
-  function orderReal(index, table, key, order) {
+  function orderDb(index, table, key, order) {
     var json = {
       count: 1,
       page: index,
@@ -566,9 +566,9 @@
       error: {},
       requestVersion: 3,
       requestCount: 1,
-      urlComment: '关联查询 Comment.userId = User.id',
+      urlComment: 'One to many: Comment.userId = User.id',
       historys: [],
-      history: {name: '请求0'},
+      history: {name: 'Req 0'},
       remotes: [],
       locals: [],
       testCases: [],
@@ -576,27 +576,27 @@
       accounts: [
         {
           'isLoggedIn': false,
-          'name': '测试账号1',
+          'name': 'Account 1',
           'phone': '13000082001',
           'password': '123456'
         },
         {
           'isLoggedIn': false,
-          'name': '测试账号2',
+          'name': 'Account 2',
           'phone': '13000082002',
           'password': '123456'
         },
         {
           'isLoggedIn': false,
-          'name': '测试账号3',
+          'name': 'Account 3',
           'phone': '13000082003',
           'password': '123456'
         }
       ],
       currentAccountIndex: 0,
       tests: { '-1':{}, '0':{}, '1':{}, '2': {} },
-      crossProcess: '交叉账号:已关闭',
-      testProcess: '机器学习:已关闭',
+      crossProcess: 'Cross: Off',
+      testProcess: 'ML: Off',
       randomTestTitle: null,
       testRandomProcess: '',
       compareColor: '#0000',
@@ -626,8 +626,8 @@
       uploadDoneCount: 0,
       uploadFailCount: 0,
       exTxt: {
-        name: 'APIJSON测试',
-        button: '保存',
+        name: 'Test',
+        button: 'Save',
         index: 0
       },
       themes: themes,
@@ -643,7 +643,7 @@
         balance: null //点击更新提示需要判空 0.00
       },
       type: REQUEST_TYPE_GQL,
-      types: [ REQUEST_TYPE_GQL ],  //默认展示
+      types: [ REQUEST_TYPE_GQL, REQUEST_TYPE_JSON ],  //默认展示
       host: '',
       database: 'MYSQL',// 'POSTGRESQL',
       schema: 'sys',
@@ -665,7 +665,7 @@
       // 全部展开
       expandAll: function () {
         if (App.view != 'code') {
-          alert('请先获取正确的JSON Response！')
+          alert('Get JSON Response first!')
           return
         }
 
@@ -680,7 +680,7 @@
       // 全部折叠
       collapseAll: function () {
         if (App.view != 'code') {
-          alert('请先获取正确的JSON Response！')
+          alert('Get JSON Response first!')
           return
         }
 
@@ -702,7 +702,7 @@
         } catch (ex) {
           App.view = 'error'
           App.error = {
-            msg: '原 JSON 解析错误\r\n' + ex.message
+            msg: 'Old JSON parse error\r\n' + ex.message
           }
           return
         }
@@ -712,7 +712,7 @@
         } catch (ex) {
           App.view = 'error'
           App.error = {
-            msg: '新 JSON 解析错误\r\n' + ex.message
+            msg: 'New JSON parse error\r\n' + ex.message
           }
           return
         }
@@ -730,8 +730,8 @@
           baseTextLines: base,
           newTextLines: newtxt,
           opcodes: opcodes,
-          baseTextName: '原 JSON',
-          newTextName: '新 JSON',
+          baseTextName: 'Old JSON',
+          newTextName: 'New JSON',
           contextSize: 2,
           viewType: 0
         }))
@@ -976,7 +976,7 @@
       showSave: function (show) {
         if (show) {
           if (App.isTestCaseShow) {
-            alert('请先输入请求内容！')
+            alert('Input request JSON first!')
             return
           }
 
@@ -992,15 +992,15 @@
           if (isRemote) { //共享测试用例
             App.isExportRandom = isRandom
             if (App.isTestCaseShow) {
-              alert('请先输入请求内容！')
+              alert('Input request JSON first!')
               return
             }
-            if (App.view != 'code') {
-              alert('请先测试请求，确保是正确可用的！')
-              return
-            }
+//            if (App.view != 'code') {
+//              alert('请先测试请求，确保是正确可用的！')
+//              return
+//            }
             if (isRandom) {
-              App.exTxt.name = '随机配置 ' + App.formatDateTime()
+              App.exTxt.name = 'Argument config ' + App.formatDateTime()
             }
             else {
               var tag = App.getTag()
@@ -1074,7 +1074,7 @@
         }
 
         if (show) {
-          App.exTxt.button = index == 8 ? '上传' : '切换'
+          App.exTxt.button = index == 8 ? 'Upload' : 'Change'
           App.exTxt.index = index
           switch (index) {
             case 0:
@@ -1088,13 +1088,13 @@
               App.isConfigShow = true
 
               if (index == 0) {
-                alert('可填数据库:\nMYSQL,POSTGRESQL,SQLSERVER,ORACLE')
+                alert('Database options:\nMYSQL,POSTGRESQL,SQLSERVER,ORACLE')
               }
               else if (index == 2) {
-                alert('自动生成代码，可填语言:\nJava,Kotlin,Swift,Objective-C,\nTypeScript,JavaScript,C#,PHP,Python,Go')
+                alert('Language options:\nJava,Kotlin,Swift,Objective-C,\nTypeScript,JavaScript,C#,PHP,Python,Go')
               }
               else if (index == 7) {
-                alert('多个类型用 , 隔开，可填类型:\nPARAM(GET ?key0=value0&key1=value1),\nJSON(POST application/json),\nFORM(POST x-www-form-urlencoded),\nDATA(POST form-data)\nGQL(POST JSON to GraphQL API)')
+                alert('Use , to divide types. Type options:\nPARAM(GET ?key0=value0&key1=value1),\nJSON(POST application/json),\nFORM(POST x-www-form-urlencoded),\nDATA(POST form-data)\nGQL(POST JSON to GraphQL API)')
               }
               break
             case 3:
@@ -1141,7 +1141,7 @@
       showDelete: function (show, item, index, isRandom) {
         this.isDeleteShow = show
         this.isDeleteRandom = isRandom
-        this.exTxt.name = '请输入' + (isRandom ? '随机配置' : '接口') + '名来确认'
+        this.exTxt.name = 'Input' + (isRandom ? 'Order & Random config' : 'API') + ' name to confirm'
         if (isRandom) {
           this.currentRandomItem = Object.assign(item, {
             index: index
@@ -1160,13 +1160,13 @@
         var item = (isDeleteRandom ? this.currentRandomItem : this.currentDocItem) || {}
         var doc = (isDeleteRandom ? item.Random : item.Document) || {}
 
-        var type = isDeleteRandom ? '随机配置' : '接口'
+        var type = isDeleteRandom ? 'Order & Random config' : 'API'
         if (doc.id == null) {
-          alert('未选择' + type + '或' + type + '不存在！')
+          alert("Haven't selected " + type + ' or ' + type + " doesn't exit！ ")
           return
         }
         if (doc.name != this.exTxt.name) {
-          alert('输入的' + type + '名和要删除的' + type + '名不匹配！')
+          alert('Mismatch for inputted ' + type + ' and ' + type + ' to delete!')
           return
         }
 
@@ -2412,13 +2412,13 @@
             verify: vVerify.value
           },
           null, App.indent)
+        App.type = REQUEST_TYPE_JSON
         App.showTestCase(false, false)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
           App.onResponse(url, res, err)
 
           var rpObj = res.data
-
           if (rpObj != null && rpObj.code === 200) {
             alert('注册成功')
 
@@ -2443,6 +2443,7 @@
             }
           },
           null, App.indent)
+        App.type = REQUEST_TYPE_JSON
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2487,7 +2488,7 @@
           })
         }
         else {
-           var isAPIJSON = this.isAPIJSON()
+          var isAPIJSON = this.isAPIJSON()
           var isGraphQL = this.isGraphQL()
           this.type = isAPIJSON ? REQUEST_TYPE_JSON : (isGraphQL ? REQUEST_TYPE_GQL : REQUEST_TYPE_PARAM)
           this.showUrl(isAdminOperation, isAPIJSON ? '/logout' : (isGraphQL ? '/graphql' : '/user/logout'))
@@ -2511,6 +2512,7 @@
             phone: vAccount.value
           },
           null, App.indent)
+        App.type = REQUEST_TYPE_JSON
         App.showTestCase(false, App.isLocalShow)
         App.onChange(false)
         App.send(isAdminOperation, function (url, res, err) {
@@ -2574,7 +2576,7 @@
               afterObj = jsonlint.parse(App.removeComment(before));
               after = JSON.stringify(afterObj, null, App.indent);
             } catch (e2) {
-              throw new Error('请求 JSON 格式错误！请检查并编辑请求！\n\n如果JSON中有注释，请 手动删除 或 点击左边的 \'/" 按钮 来去掉。\n\n' + e2.message)
+              throw new Error('Wrong JSON format! Check and edit it! \n\nYou can remove all comments and retry\n\n' + e2.message)
             }
           }
 
@@ -2583,7 +2585,7 @@
           try {
             code = this.getCode(after); //必须在before还是用 " 时使用，后面用会因为解析 ' 导致失败
           } catch(e) {
-            code = '\n\n\n建议:\n使用其它浏览器，例如 谷歌Chrome、火狐FireFox 或者 微软Edge， 因为这样能自动生成请求代码.'
+            code = '\n\n\nTips:\nUse Chrome, FireFox or Edge to generate code'
               + '\nError:\n' + e.message + '\n\n\n';
           }
 
@@ -2600,14 +2602,14 @@
 
           vInput.value = before;
           vSend.disabled = false;
-          vOutput.value = output = 'OK，请点击 [发送请求] 按钮来测试。[点击这里查看视频教程](http://i.youku.com/apijson)' + code;
+          vOutput.value = output = 'OK, click [Send] to test. [Click here to watch video](http://i.youku.com/apijson)' + code;
 
 
           App.showDoc()
 
           try {
             var m = App.getMethod();
-            var c = isSingle ? '' : CodeUtil.parseComment(after, docObj == null ? null : docObj['[]'], m, App.database, vUrl.value, App.isAPIJSON())
+            var c = isSingle ? '' : CodeUtil.parseComment(after, docObj == null ? null : docObj['[]'], m, App.database, null, true)
 
             if (isSingle != true && afterObj.tag == null) {
               m = m == null ? 'GET' : m.toUpperCase()
@@ -2993,25 +2995,25 @@
        * @param rq
        */
       getCode: function (rq) {
-        var s = '\n\n\n### 请求代码(自动生成) \n';
+        var s = '\n\n\n### Generated code \n';
         switch (App.language) {
           case 'Java':
-            s += '\n#### <= Android-Java: 同名变量需要重命名'
+            s += '\n#### <= Android-Java: rename duplicated names'
               + ' \n ```java \n'
               + StringUtil.trim(CodeUtil.parseJava(null, JSON.parse(rq), 0, isSingle))
-              + '\n ``` \n注：' + (isSingle ? '用了 APIJSON 的 JSONRequest 类，也可使用其它类封装，只要 JSON 有序就行\n' : 'LinkedHashMap&lt;&gt;() 可替换为 fastjson 中的 JSONObject(true) 等有序JSON构造方法\n');
+              + '\n ``` \nNote: ' + (isSingle ? 'Using JSONRequest in APIJSON, can replace with ordered JSONObject\n' : 'LinkedHashMap&lt;&gt;() can be replaced with JSONObject(true)\n');
             break;
           case 'Swift':
-            s += '\n#### <= iOS-Swift: 空对象用 [ : ]'
+            s += '\n#### <= iOS-Swift: [ : ] for empty objects'
               + '\n ```swift \n'
               + CodeUtil.parseSwift(null, JSON.parse(rq), 0)
-              + '\n ``` \n注：对象 {} 用 ["key": value]，数组 [] 用 [value0, value1]\n';
+              + '\n ``` \nNote: ["key": value] for objects, [value0, value1] for arrays\n';
             break;
           case 'Kotlin':
-            s += '\n#### <= Android-Kotlin: 空对象用 HashMap&lt;String, Any&gt;()，空数组用 ArrayList&lt;Any&gt;()\n'
+            s += '\n#### <= Android-Kotlin: HashMap&lt;String, Any&gt;() for empty objects, ArrayList&lt;Any&gt;() for empty arrays\n'
               + '```kotlin \n'
               + CodeUtil.parseKotlin(null, JSON.parse(rq), 0)
-              + '\n ``` \n注：对象 {} 用 mapOf("key": value)，数组 [] 用 listOf(value0, value1)\n';
+              + '\n ``` \nNote: mapOf("key": value) for objects, listOf(value0, value1) for arrays\n';
             break;
           case 'Objective-C':
             s += '\n#### <= iOS-Objective-C \n ```objective-c \n'
@@ -3019,22 +3021,22 @@
               + '\n ```  \n';
             break;
           case 'C#':
-            s += '\n#### <= Unity3D-C\#: 键值对用 {"key", value}' +
+            s += '\n#### <= Unity3D-C\#: {"key", value} for objects' +
               '\n ```csharp \n'
               + CodeUtil.parseCSharp(null, JSON.parse(rq), 0)
-              + '\n ``` \n注：对象 {} 用 new JObject{{"key", value}}，数组 [] 用 new JArray{value0, value1}\n';
+              + '\n ``` \nNote: new JObject{{"key", value}} for objects, new JArray{value0, value1} for arrays\n';
             break;
           case 'PHP':
-            s += '\n#### <= Web-PHP: 空对象用 (object) ' + (isSingle ? '[]' : 'array()')
+            s += '\n#### <= Web-PHP: (object) ' + (isSingle ? '[]' : 'array()') + ' for empty objects'
               + ' \n ```php \n'
               + CodeUtil.parsePHP(null, JSON.parse(rq), 0, isSingle)
-              + '\n ``` \n注：对象 {} 用 ' + (isSingle ? '[\'key\' => value]' : 'array("key" => value)') + '，数组 [] 用 ' + (isSingle ? '[value0, value1]\n' : 'array(value0, value1)\n');
+              + '\n ``` \nNote: ' + (isSingle ? '[\'key\' => value]' : 'array("key" => value)') + ' for objects, ' + (isSingle ? '[value0, value1]\n' : 'array(value0, value1)\n') + ' for arrays';
             break;
           case 'Go':
-            s += '\n#### <= Web-Go: 对象 key: value 会被强制排序，每个 key: value 最后都要加逗号 ","'
+            s += '\n#### <= Web-Go: key: value will be forcely sorted, append comma "," for every key: value'
               + ' \n ```go \n'
               + CodeUtil.parseGo(null, JSON.parse(rq), 0)
-              + '\n ``` \n注：对象 {} 用 map[string]interface{} {"key": value}，数组 [] 用 []interface{} {value0, value1}\n';
+              + '\n ``` \nNote: map[string]interface{} {"key": value} for objects, []interface{} {value0, value1} for arrays\n';
             break;
           //以下都不需要解析，直接用左侧的 JSON
           case 'JavaScript':
@@ -3042,23 +3044,15 @@
           case 'Python':
             break;
           default:
-            s += '\n没有生成代码，可能生成代码(封装,解析)的语言配置错误。\n';
+            s += '\nNo generated code, maybe because of wrong configuration of language.\n';
             break;
         }
-        s += '\n#### <= Web-JavaScript/TypeScript/Python: 和左边的请求 JSON 一样 \n';
+        s += '\n#### <= Web-JavaScript/TypeScript/Python: The same to the JSON on the left\n';
 
-        s += '\n\n#### 开放源码 '
-          + '\nAPIJSON 接口工具: https://github.com/AutoGraphQL/GraphAuto '
-          + '\nAPIJSON 官方文档: https://github.com/vincentCheng/apijson-doc '
-          + '\nAPIJSON 英文文档: https://github.com/ruoranw/APIJSONdocs '
-          + '\nAPIJSON 官方网站: https://github.com/APIJSON/apijson.org '
-          + '\nAPIJSON -Java版: https://github.com/APIJSON/APIJSON '
-          + '\nAPIJSON - C# 版: https://github.com/liaozb/APIJSON.NET '
-          + '\nAPIJSON - PHP版: https://github.com/qq547057827/apijson-php '
-          + '\nAPIJSON -GraphQL版: https://github.com/kevinaskin/apijson-node '
-          + '\nAPIJSON - Go 版: https://github.com/crazytaxi824/APIJSON '
-          + '\nAPIJSON -Python: https://github.com/zhangchunlin/uliweb-apijson '
-          + '\n感谢热心的作者们的贡献，GitHub 右上角点 ⭐Star 支持下他们吧 ^_^';
+        s += '\n\n#### Open source code '
+          + '\nhttps://github.com/AutoGraphQL/AutoGraphQL '
+          + '\nhttps://github.com/AutoGraphQL/GraphAuto '
+          + '\n⭐ Star to support ^_^';
 
         return s;
       },
@@ -3073,13 +3067,12 @@
         }
         doc = d;
         vOutput.value += (
-          '\n\n\n## 文档 \n\n 通用文档见 [APIJSON通用文档](https://github.com/APIJSON/APIJSON/blob/master/Document.md#3.2) \n### 数据字典\n自动查数据库表和字段属性来生成 \n\n' + d
-          + '<h3 align="center">简介</h3>'
-          + '<p align="center">本站为 APIAuto-自动化接口管理平台'
-          + '<br>提供 接口和文档托管、机器学习自动化测试、自动生成文档和代码 等服务'
-          + '<br>由 <a href="https://github.com/AutoGraphQL/GraphAuto" target="_blank">APIAuto(前端网页工具)</a>, <a href="https://github.com/APIJSON/APIJSON" target="_blank">APIJSON(后端接口服务)</a> 等提供技术支持'
-          + '<br>遵循 <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache-2.0 开源协议</a>'
-          + '<br>Copyright &copy; 2016-2019 Tommy Lemon</p>'
+          '\n\n\n## Document \n\n See [Document](https://github.com/AutoGraphQL/AutoGraphQL) \n### Data dictionary\ngenerate with properties of tables and columns \n\n' + d
+          + '<h3 align="center">About</h3>'
+          + '<p align="center">GraphAuto-Advanced GraphQL API tool with machine learning.'
+          + '<br>Frontend: <a href="https://github.com/AutoGraphQL/GraphAuto" target="_blank">GraphAuto</a>, Backend: <a href="https://github.com/Tencent/APIJSON" target="_blank">APIJSON</a>'
+          + '<br>Use <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache-2.0</a>'
+          + '<br>Copyright &copy; 2016-Now Tommy Lemon</p>'
         );
 
         App.view = 'markdown';
@@ -3239,12 +3232,12 @@
               // item.Table.table_name = table.table_name
               // item.Table.table_comment = table_comment
 
-              doc += '### ' + (i + 1) + '. ' + CodeUtil.getModelName(table.table_name) + '\n#### 说明: \n'
+              doc += '### ' + (i + 1) + '. ' + CodeUtil.getModelName(table.table_name) + '\n#### Description: \n'
                 + App.toMD(table_comment);
 
 
               //Column[]
-              doc += '\n\n#### 字段: \n 名称  |  类型  |  最大长度  |  详细说明' +
+              doc += '\n\n#### Column: \n Name  |  Type  |  Max length  |  Detailed description' +
                 ' \n --------  |  ------------  |  ------------  |  ------------ ';
 
               columnList = item['[]'];
@@ -3303,8 +3296,8 @@
               log('getDoc  Access[] = \n' + format(JSON.stringify(list)));
             }
 
-            doc += '\n\n\n\n\n\n\n\n\n### 访问权限\n自动查 Access 表写入的数据来生成\n'
-              + ' \n 表名  |  允许 get<br>的角色  |  允许 head<br>的角色  |  允许 gets<br>的角色  |  允许 heads<br>的角色  |  允许 post<br>的角色  |  允许 put<br>的角色  |  允许 delete<br>的角色  |  表名'
+            doc += '\n\n\n\n\n\n\n\n\n### Access\nread Access table to generate\n'
+              + ' \n Table  |  Allowed roles for get  |  Allowed roles for head  |  Allowed roles for gets  |  Allowed roles for heads  |  Allowed roles for post  |  Allowed roles for put  |  Allowed roles for delete  |  Table'
               + ' \n --------  |  ---------  |  ---------  |  ---------  |  ---------  |  ---------  |  ---------  |  --------- | --------  ';
 
             for (var i = 0; i < list.length; i++) {
@@ -3327,7 +3320,7 @@
                 + '  |  ' + (item.name); //右上角设置指定了 Schema  + '(' + item.schema + ')');
             }
 
-            doc += ' \n 表名  |  允许 get<br>的角色  |  允许 head<br>的角色  |  允许 gets<br>的角色  |  允许 heads<br>的角色  |  允许 post<br>的角色  |  允许 put<br>的角色  |  允许 delete<br>的角色  |  表名'
+            doc += ' \n Table  |  Allowed roles for get  |  Allowed roles for head  |  Allowed roles for gets  |  Allowed roles for heads  |  Allowed roles for post  |  Allowed roles for put  |  Allowed roles for delete  |  Table'
 
             doc += '\n' //避免没数据时表格显示没有网格
           }
@@ -3342,8 +3335,8 @@
               log('getDoc  Function[] = \n' + format(JSON.stringify(list)));
             }
 
-            doc += '\n\n\n\n\n\n\n\n\n### 远程函数\n自动查 Function 表写入的数据来生成\n'
-              + ' \n 说明  |  示例'
+            doc += '\n\n\n\n\n\n\n\n\n### Function\nread Function table to generate\n'
+              + ' \n Explain  |  Example'
               + ' \n --------  |  -------------- ';
 
             for (var i = 0; i < list.length; i++) {
@@ -3371,8 +3364,8 @@
               log('getDoc  Request[] = \n' + format(JSON.stringify(list)));
             }
 
-            doc += '\n\n\n\n\n\n\n\n\n### 非开放请求\n自动查 Request 表写入的数据来生成\n'
-              + ' \n 版本  |  方法  |  数据和结构'
+            doc += '\n\n\n\n\n\n\n\n\n### Request rules\nread Request table to generate\n'
+              + ' \n Version  |  Method  |  Data and structure'
               + ' \n --------  |  ------------  |  ------------  |  ------------ ';
 
             for (var i = 0; i < list.length; i++) {
@@ -3388,7 +3381,7 @@
                 + '  |  ' + JSON.stringify(App.getStructure(item.structure, item.tag));
             }
 
-            doc += '\n注: \n1.GET,HEAD方法不受限，可传任何 数据、结构。\n2.可在最外层传版本version来指定使用的版本，不传或 version <= 0 则使用最新版。\n\n\n\n\n\n\n';
+            doc += '\nNote: \n1.No limit for GET,HEAD.\n2.Use version to specify request rules, use latest version if verion == null || version <= 0。\n\n\n\n\n\n\n';
           }
 
 
@@ -3546,13 +3539,13 @@
 
       enableCross: function (enable) {
         this.isCrossEnabled = enable
-        this.crossProcess = enable ? '交叉账号:已开启' : '交叉账号:已关闭'
+        this.crossProcess = enable ? 'Cross: On' : 'Cross: Off'
         this.saveCache(App.server, 'isCrossEnabled', enable)
       },
 
       enableML: function (enable) {
         this.isMLEnabled = enable
-        this.testProcess = enable ? '机器学习:已开启' : '机器学习:已关闭'
+        this.testProcess = enable ? 'ML: On' : 'ML: Off'
         this.saveCache(App.server, 'isMLEnabled', enable)
         this.remotes = null
         this.showTestCase(true, false)
@@ -3748,23 +3741,23 @@
                 '\n每个随机变量配置都必须按照 key0/key1/../targetKey replaceKey : value  //注释 的格式！其中 replaceKey 可省略。');
             }
 
-            // value RANDOM_REAL
+            // value RANDOM_DB
             value = line.substring(index + ':'.length).trim();
 
-            if (value == RANDOM_REAL) {
-              value = 'randomReal(JSONResponse.getTableName(pathKeys[pathKeys.length - 2]), "' + key + '", 1)';
+            if (value == RANDOM_DB) {
+              value = 'randomDb(JSONResponse.getTableName(pathKeys[pathKeys.length - 2]), "' + key + '", 1)';
               if (customizeKey != true) {
                 key += '@';
               }
             }
-            else if (value == RANDOM_REAL_IN) {
-              value = 'randomReal(JSONResponse.getTableName(pathKeys[pathKeys.length - 2]), "' + key + '", null)';
+            else if (value == RANDOM_DB_IN) {
+              value = 'randomDb(JSONResponse.getTableName(pathKeys[pathKeys.length - 2]), "' + key + '", null)';
               if (customizeKey != true) {
                 key += '{}@';
               }
             }
-            else if (value == ORDER_REAL) {
-              value = 'orderReal(' +
+            else if (value == ORDER_DB) {
+              value = 'orderDb(' +
                 getOrderIndex(
                   randomId
                   , line.substring(0, line.lastIndexOf(' : '))
@@ -4405,12 +4398,26 @@
       setTimeout(function () {
         if (App.type == REQUEST_TYPE_GQL) {
           App.indent = '  '
-          App.urlComment = '带参数关联查询'
+          App.urlComment = 'Query one to may'
           vInput.value = JSON.stringify({
-            first: 10,
-            skip: 0
+            "arg": {
+              "User": {
+                "id": 82001
+              },
+              "[]": {
+                "Comment": {
+                  "userId@": "User/id"
+                }
+              }
+            }
           }, null, App.indent)
-          vRandom.value = "first : RANDOM_IN(3,5,10,20,'1','s',false,[],{})  //随机取值\nskip : Math.round(5*Math.random())  //通过代码来自定义\n\n//清空文本内容可查看规则"
+          vRandom.value = `arg/User/id: RANDOM_INT(82001, 82020)
+arg/[]/count: ORDER_IN(5, 10, 's', false, [], {})
+arg/[]/page: Math.round(5*Math.random())
+arg/@explain: RANDOM_IN(true, false)
+  //  arg/[]/Comment/toId: RANDOM_DB()
+
+  // 2 blanks before // for comments; clear to show rules.`
           App.onChange(false)
         }
       }, 500)
