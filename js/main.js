@@ -4154,7 +4154,7 @@
             break;
           case JSONResponse.COMPARE_NO_STANDARD:
             it.compareColor = 'green'
-            it.compareMessage = 'Click [Correct] if no problem'
+            it.compareMessage = 'Click [Right] if no problem'
             break;
           case JSONResponse.COMPARE_KEY_MORE:
             it.compareColor = 'green'
